@@ -1,6 +1,8 @@
+import logging
 
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 class bcolors:
     HEADER = '\033[95m'

@@ -5,36 +5,36 @@ import sys
 
 import numpy as np
 from cvxopt import matrix
-from cvxopt.modeling import variable, sum, op, dot
+from cvxopt.modeling import variable, sum, op, dot, constraint
 from scipy.sparse import coo_matrix
 
 import utils
+logger = logging.getLogger(__name__)
 
 
-def bitarray_to_vote_vector(ba, m):
-    vote_vector = np.zeros((m), dtype=int)
-    for i, v in enumerate(ba):
-        if v:
-            vote_vector[i % m] += 1
-    return vote_vector
+# def bitarray_to_vote_vector(ba, m):
+#     vote_vector = np.zeros((m), dtype=int)
+#     for i, v in enumerate(ba):
+#         if v:
+#             vote_vector[i % m] += 1
+#     return vote_vector
 
 
 def backtrack(taken, weight_bound, multiplicity, weights):
-    # res = bitarray('0' * len(weights))
-    # w = weight_bound
-    # item_idx = last_item_idx
-    # while item_idx >= 0:
-    #     res[item_idx] = True
-    #     item_idx = taken[w][item_idx]
-    #     w -= weights[item_idx]
-    # return res
+    """
+    Backtracks the table of `exclusive_knapsack` to produce the resulting multiset
+
+    Args:
+        taken:
+        weight_bound (int):
+        multiplicity (int):
+        weights:
+
+    Returns:
+        List[int]: A milti-subset as list
+
     """
 
-    :type weights: List[int]
-    :param multiplicity: int
-    :type weight_bound: Union[numpy.int32, int]
-    :type taken: List[List[int]]
-    """
     res = []
     w = weight_bound
     for ell in range(multiplicity, 0, -1):
@@ -45,71 +45,32 @@ def backtrack(taken, weight_bound, multiplicity, weights):
     return res
 
 
-# def knapsack(values, weights, target_value, weight_bound, num_to_take, eps=0.001):
-#     """
-#     :param weights: list of integers
-#     :type weights: list of ints
-#     """
-#     assert len(values) == len(weights)
-#     num_items = len(values)
-#
-#     values = [0] + values  # dummy item
-#     weights = [weight_bound + 1] + weights  # dummy item
-#
-#     # new_weights = [int(math.ceil(weight / eps)) for weight in weights]
-#     # new_weight_bound = int(math.floor(weight_bound / eps))
-#     # steps = sum(new_weights)
-#
-#     mat = np.zeros((weight_bound + 1, len(values)))
-#     taken = [[False] * len(values) for w in range(weight_bound + 1)]
-#     mat[:, 0] = 0  # init table - we always don't want to take the dummy item
-#     for w in range(weight_bound + 1):
-#         for item in range(1, len(values)):
-#             mat[w, item] = mat[w, item - 1]  # do not take the item
-#             taken[w][item] = False
-#             if w - weights[item] >= 0 and mat[w - weights[item], item - 1] + values[item] > mat[w, item]:
-#                 mat[w, item] = mat[w - weights[item], item - 1] + values[item]  # take the item
-#                 taken[w][item] = True
-#
-#     best_val = mat[weight_bound, num_items]
-#
-#     if best_val > target_value + eps:
-#         print 'best val: {} target: {}'.format(best_val, target_value)
-#         subset = backtrack(taken, weight_bound, multiplicity, weights)
-#         return subset
-#     else:
-#         return None
 
+def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.001):
+    """
+    Solves an instance of the k-multiset knapsack
+    Args:
+        values (List[float]): a vector of item values
+        weights (List[int]): a vector of item weights
+        k (int): the size of the resulting multiset
+        target_value (float): a lower bound on resulting subset value
+        weight_bound (numpy.int32): an upper bound on resulting subset weight
+        tol (float): a tolerance argument
 
-def exclusive_knapsack(values, weights, multiplicity, target_value, weight_bound, tol=0.001):
+    Returns:
+        List[int]: A multiset of items of size `k` represented as an list containing the histogram of score types.
+
     """
-    :type weights: List[int]
-    :type tol: float
-    :type weight_bound: Union[numpy.int32, int]
-    :type target_value: float
-    :type multiplicity: int
-    :type values: List[float]
-    """
+
     assert len(values) == len(weights)
 
     num_types = len(values)
-    # num_items = num_types * multiplicity
 
-    # values = values * multiplicity
-    # weights = weights * multiplicity
-
-    # values = values  # dummy item
-    # weights = weights  # dummy item
-
-    # new_weights = [int(math.ceil(weight / eps)) for weight in weights]
-    # new_weight_bound = int(math.floor(weight_bound / eps))
-    # steps = sum(new_weights)
-
-    mat = np.zeros((weight_bound + 1, multiplicity + 1))
-    last_taken = [[-1] * (multiplicity + 1) for w in range(weight_bound + 1)]
+    mat = np.zeros((weight_bound + 1, k + 1))
+    last_taken = [[-1] * (k + 1) for w in range(weight_bound + 1)]
     # mat[:, 0] = 0  # init table - we always don't want to take the dummy item
     for w in range(weight_bound + 1):
-        for ell in range(multiplicity + 1):
+        for ell in range(k + 1):
             if ell == 0:
                 mat[w, ell] = 0
             else:
@@ -122,12 +83,13 @@ def exclusive_knapsack(values, weights, multiplicity, target_value, weight_bound
                             mat[w, ell] = values[item] + mat[w - weights[item], ell - 1]
                             last_taken[w][ell] = item
 
-    best_val = mat[weight_bound, multiplicity]
+    best_val = mat[weight_bound, k]
 
     if best_val > target_value + tol:
-        logging.debug('best val: {} target: {}'.format(best_val, target_value))
-        subset = backtrack(last_taken, weight_bound, multiplicity, weights)
+        logger.debug('best val: {} target: {}'.format(best_val, target_value))
+        subset = backtrack(last_taken, weight_bound, k, weights)
         assert best_val - tol < sum(values[item] for item in subset) < best_val + tol
+        assert isinstance(subset, list)
         return subset
     else:
         return None
@@ -136,7 +98,11 @@ def exclusive_knapsack(values, weights, multiplicity, target_value, weight_bound
 def aslist(mat):
     """
 
-    :type mat: matrix
+    Args:
+        mat:
+
+    Returns:
+
     """
     assert isinstance(mat, matrix)
     return [mat[i] for i in range(len(mat))]
@@ -144,8 +110,16 @@ def aslist(mat):
 
 def find_violated_constraint(y, z, targets, k):
     """
+    This is the separation oracle. Given (y,z) representing a prosoped solution to the dual of the C-LP, it find
+    a violated constrait or returns `None`.
+    Args:
+        y (cvxopt.modeling.variable): the y vector
+        z (cvxopt.modeling.variable): the z vector
+        targets (List[numpy.int32]): list of bounds for each candidate i representing T-sigma(i)
+        k (int): the number of manipulators
 
-    :type y: matrix
+    Returns:
+        cvxopt.modeling.constraint: the violated constraint
     """
     y_vals, z_vals = aslist(y.value), aslist(z.value)
     num_item_types = len(z_vals)
@@ -154,9 +128,9 @@ def find_violated_constraint(y, z, targets, k):
 
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
-        subset = exclusive_knapsack(values=z_vals, weights=range(num_item_types), multiplicity=k,
-                                    target_value=y_vals[i],
-                                    weight_bound=min(targets[i], natural_bound))
+        subset = k_multiset_knapsack(values=z_vals, weights=range(num_item_types), k=k,
+                                     target_value=y_vals[i],
+                                     weight_bound=min(targets[i], natural_bound))
         if subset:
             assert sum(subset) <= min(targets[i], natural_bound) and sum(z_vals[j] for j in subset) >= y_vals[i]
 
@@ -203,6 +177,17 @@ def draw_interim_configs(x_i_C2val):
 
 
 def lp_solve(m, k, sigmas, target):
+    """
+    Solved a C-LP instance
+    Args:
+        m (int): number of candidates
+        k (int): number of manipulators
+        sigmas (numpy.ndarray): the initial (i.e. non-manipulator) score for each candidate
+        target (numpy.int32): the proposed bound on the final score of each candidate
+
+    Returns:
+
+    """
     gaps = [target - sigma for sigma in sigmas]
     return lp_solve_by_gaps(m, k, gaps)
 
@@ -234,20 +219,20 @@ def lp_solve_by_gaps(m, k, gaps):
     return x_i_C2val
 
 
-def plot_interim(histogram):
-    import matplotlib.pyplot as plt
-    plt.figure()
-    width = 1.0
-    vote_types = np.array(range(0, len(histogram)))
-    bar = plt.bar(vote_types - 0.5 * width, histogram, width=width, color='g', alpha=0.75, label='actual')
-    base = plt.plot([vote_types[0] - 0.5 * width, vote_types[-1] + 0.5 * width], [k] * 2, color='r', label='expected',
-                    linewidth=2.0)
-    plt.xticks(vote_types)
-    plt.axis([vote_types[0] - 0.5 * width, vote_types[-1] + 0.5 * width, 0, np.max(histogram) + 1])
-    plt.xlabel('vote types')
-    plt.ylabel('number of votes')
-    plt.legend()
-    plt.show()
+# def plot_interim(histogram):
+#     import matplotlib.pyplot as plt
+#     plt.figure()
+#     width = 1.0
+#     vote_types = np.array(range(0, len(histogram)))
+#     bar = plt.bar(vote_types - 0.5 * width, histogram, width=width, color='g', alpha=0.75, label='actual')
+#     base = plt.plot([vote_types[0] - 0.5 * width, vote_types[-1] + 0.5 * width], [k] * 2, color='r', label='expected',
+#                     linewidth=2.0)
+#     plt.xticks(vote_types)
+#     plt.axis([vote_types[0] - 0.5 * width, vote_types[-1] + 0.5 * width, 0, np.max(histogram) + 1])
+#     plt.xlabel('vote types')
+#     plt.ylabel('number of votes')
+#     plt.legend()
+#     plt.show()
 
 
 def fix_configs(config_mat):
