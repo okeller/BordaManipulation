@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import logging
+import os
 
 import numpy as np
 import pandas as pd
@@ -23,10 +24,12 @@ trials = 8
 # end = 10
 
 
+folder = 'output2'
+if not os.path.exists(folder):
+    os.makedirs(folder)
 
-def run(n,k,m, trial, initial_sigmas):
 
-
+def run(n, k, m, trial, initial_sigmas):
     assert isinstance(initial_sigmas, np.ndarray)
     gaps = utils.sigmas_to_gaps(initial_sigmas, np.max(initial_sigmas))
     logger.info('gaps={}'.format(gaps))
@@ -40,29 +43,26 @@ def run(n,k,m, trial, initial_sigmas):
     af_res = average_fit.solve_one_gaps(k, gaps, verbose=False)
     af_makespan = utils.makespan(initial_sigmas, af_res)
     logger.info(
-        'n={} k={} m={} trial={} frac={} CLP={} AF={}'.format(n, k, m, trial, fractional_makespan, clp_makespan, af_makespan))
+        'n={} k={} m={} trial={} frac={} CLP={} AF={}'.format(n, k, m, trial, fractional_makespan, clp_makespan,
+                                                              af_makespan))
     result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
     return result_to_append
 
 
-
 if __name__ == '__main__':
-
 
     for m in range(4, 65, 10):
         logm = int(np.math.ceil(np.math.log(m, 2)))
         max_logk = logm // 2
-        for logn in range (2, max_logk+2):
-
-
+        for logn in range(2, max_logk + 2):
             # m = 2 ** logm
             n = 2 ** logn
             k = n // 2
 
             logger.info('m={} n={}'.format(m, n))
 
-            res = Parallel(n_jobs=1)\
-                (delayed(run)(n,k,m, trial, utils.draw_uniform(m, n))
+            res = Parallel(n_jobs=1) \
+                (delayed(run)(n, k, m, trial, utils.draw_uniform(m, n))
                  for trial in range(trials)
                  )
 
@@ -73,8 +73,13 @@ if __name__ == '__main__':
             #         result_to_append = run(n,k,m,trial)
             #         res.append(result_to_append)
 
-            df = pd.DataFrame(data=res, columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan', 'af_makespan'])
-            df.to_csv('output5/results-n{}-k{}-m{}-t{}.csv'.format(n, k, m, trials), index=False)
+            df = pd.DataFrame(data=res,
+                              columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
+                                       'af_makespan'])
+
+            filename = 'results-n{}-k{}-m{}-t{}.csv'.format(n, k, m, trials)
+            abs_path = os.path.join(folder, filename)
+            df.to_csv(abs_path, index=False)
 
 
 # means = np.mean(results,axis=1)
