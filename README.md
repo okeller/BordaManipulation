@@ -11,4 +11,4 @@ Code for the paper "New Approximation for Borda Coalitional Manipulation"
 * scikit-learn (only for joblib)
 
 ### Running:
-Run and follow the code in [loop_main.py](loop_main.py).
+Run and follow the code in [loop_main.py](full_test.py).
