@@ -1,7 +1,11 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
+# from future import standard_library
+from builtins import (bytes, open, super, range,
+                      zip, round, input, int, pow, object)
+
+import sys
 
 import logging
-import sys
 
 import numpy as np
 from cvxopt import matrix
@@ -9,6 +13,8 @@ from cvxopt.modeling import variable, sum, op, dot, constraint
 from scipy.sparse import coo_matrix
 
 import utils
+
+# PY_OLD = sys.version_info[0] < 3
 logger = logging.getLogger(__name__)
 
 
@@ -25,10 +31,10 @@ def backtrack(taken, weight_bound, multiplicity, weights):
     Backtracks the table of `exclusive_knapsack` to produce the resulting multiset
 
     Args:
-        taken:
+        taken (List[List[int]]): the table confirming whether an item was taken or not
         weight_bound (int):
         multiplicity (int):
-        weights:
+        weights (List[int]):
 
     Returns:
         List[int]: A milti-subset as list
@@ -45,7 +51,6 @@ def backtrack(taken, weight_bound, multiplicity, weights):
     return res
 
 
-
 def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.001):
     """
     Solves an instance of the k-multiset knapsack
@@ -55,7 +60,7 @@ def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.00
         k (int): the size of the resulting multiset
         target_value (float): a lower bound on resulting subset value
         weight_bound (numpy.int32): an upper bound on resulting subset weight
-        tol (float): a tolerance argument
+        tol (float): a tolerance parameter
 
     Returns:
         List[int]: A multiset of items of size `k` represented as an list containing the histogram of score types.
@@ -66,7 +71,7 @@ def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.00
 
     num_types = len(values)
 
-    mat = np.zeros((weight_bound + 1, k + 1))
+    mat = np.zeros((weight_bound + 1, k + 1), dtype=np.float32)
     last_taken = [[-1] * (k + 1) for w in range(weight_bound + 1)]
     # mat[:, 0] = 0  # init table - we always don't want to take the dummy item
     for w in range(weight_bound + 1):
@@ -75,7 +80,7 @@ def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.00
                 mat[w, ell] = 0
             else:
                 mat[
-                    w, ell] = -sys.maxint  # since we still don't know better, the default is that current option is invalid
+                    w, ell] = -sys.maxsize  # since we still don't know better, the default is that current option is invalid
                 last_taken[w][ell] = -1
                 for item in range(0, num_types):
                     if w - weights[item] >= 0:  # if item is relevant, i.e., can be at all taken
@@ -140,20 +145,20 @@ def find_violated_constraint(y, z, targets, k):
             vote_vector_rep = ','.join([str(v) for v in vote_vector])
 
             # subset_vector = matrix(subset.tolist(), tc='d')
-            vote_vector_mat = matrix(np.array(vote_vector, dtype=float), tc='d')
+            vote_vector_mat = matrix(np.array(vote_vector, dtype=np.float64), tc=str('d'))
             c = dot(vote_vector_mat, z) <= y[i]
-            c.name = '{}\t{}'.format(i, vote_vector_rep)
+            c.name = str('{}\t{}').format(i, vote_vector_rep)
             # c.name = (i, subset)
             return c  # the constraint itself
     return None
 
 
 def get_frac_config_mat(x_i_C2val):
-    fractional_config_mat = np.zeros((len(x_i_C2val), len(x_i_C2val)))
+    fractional_config_mat = np.zeros((len(x_i_C2val), len(x_i_C2val)), dtype=np.float32)
 
     for cand, weighted_configs in enumerate(x_i_C2val):
         for con_str, w in weighted_configs:
-            con_array = np.array([int(v) for v in con_str.split(',')])
+            con_array = np.array([int(v) for v in con_str.split(',')], dtype=np.int32)
 
             fractional_config_mat[cand, :] += w * con_array
 
@@ -163,14 +168,14 @@ def get_frac_config_mat(x_i_C2val):
 def draw_interim_configs(x_i_C2val):
     res = []
     for weighted_configs in x_i_C2val:
-        weights = np.array([v for k, v in weighted_configs])
+        weights = np.array([v for k, v in weighted_configs], dtype=np.float32)
         weights /= np.sum(weights)  # re-normalize in order to fix rounding issues
 
         configs = [k for k, v in weighted_configs]
         try:
             config = np.random.choice(configs, p=weights)
         except:
-            logging.error('weights={}'.format(sum(weights)))
+            logger.error('weights={}'.format(sum(weights)))
             raise 'weights'
         res.append(config)
     return res
@@ -193,24 +198,34 @@ def lp_solve(m, k, sigmas, target):
 
 
 def lp_solve_by_gaps(m, k, gaps):
-    y = variable(m, 'y')
-    z = variable(m, 'z')
+    """
+
+    Args:
+        m (int):
+        k (int):
+        gaps (List[numpy.int32]):
+
+    Returns:
+
+    """
+    y = variable(m, name=str('y'))
+    z = variable(m, name=str('z'))
     obj_func = sum(y) - k * sum(z)
     constraints = [y >= 0, z >= 0]
     prog = op(obj_func, constraints)
     prog.solve()
     c = find_violated_constraint(y, z, gaps, k)
     while c is not None:
-        logging.debug('Adding constraint {}'.format(c))
+        logger.debug('Adding constraint {}'.format(c))
         constraints.append(c)
         prog = op(obj_func, constraints)
         prog.solve()
         c = find_violated_constraint(y, z, gaps, k)
-    logging.debug('reached obj val: {}'.format(prog.objective.value()))
+    logger.debug('reached obj val: {}'.format(prog.objective.value()))
     if 'infeasible' in prog.status:
-        logging.debug(prog.status)
+        logger.debug(prog.status)
         return prog.status
-    logging.debug('{} {}'.format(y.value, z.value))
+    logger.debug('{} {}'.format(y.value, z.value))
     x_i_C2val = [[] for _ in range(m)]
     for c in constraints:
         if c.name:
@@ -235,23 +250,23 @@ def lp_solve_by_gaps(m, k, gaps):
 #     plt.show()
 
 
-def fix_configs(config_mat):
-    """
+# def fix_configs(config_mat):
+#     """
+#
+#     :type config_mat: numpy.ndarray
+#     """
+#     m = config_mat.shape[1]
+#     as_coo = coo_matrix(config_mat)
+#     coords = zip(as_coo.row, as_coo.col, as_coo.data)
+#     coords.sort(key=lambda t: t[2])
+#     for i in range(len(coords)):
+#         coords[i][2] = i // m
+#     rows, cols, data = zip(*coords)
+#     matrix = coo_matrix((data, rows, cols))
+#     return matrix
 
-    :type config_mat: numpy.ndarray
-    """
-    m = config_mat.shape[1]
-    as_coo = coo_matrix(config_mat)
-    coords = zip(as_coo.row, as_coo.col, as_coo.data)
-    coords.sort(key=lambda t: t[2])
-    for i in range(len(coords)):
-        coords[i][2] = i // m
-    rows, cols, data = zip(*coords)
-    matrix = coo_matrix((data, rows, cols))
-    return matrix
 
-
-def fix_interim_configs(config_mat, k, initial_sigmas):
+def fix_rounding_result(config_mat, k, initial_sigmas):
     """
 
     :type initial_sigmas: numpy.ndarray
@@ -277,7 +292,7 @@ def fix_interim_configs(config_mat, k, initial_sigmas):
     for i, ev in enumerate(events):
         fixed_events.append((i // k, ev[1]))
 
-    res = np.zeros((m, m), dtype=int)
+    res = np.zeros((m, m), dtype=np.int32)
     for ev in fixed_events:
         score, cand = ev
         res[cand, score] += 1
@@ -292,7 +307,12 @@ def find_strategy_by_gaps(initial_gaps, k):
 def find_strategy(initial_sigmas, k):
     """
 
-    :type initial_sigmas: numpy.ndarray
+    Args:
+        initial_sigmas:
+        k:
+
+    Returns:
+
     """
     m = len(initial_sigmas)
     target = np.max(initial_sigmas)
@@ -328,30 +348,34 @@ def find_strategy(initial_sigmas, k):
 
     assert x_i_C2val != 'dual infeasible'
 
-    logging.debug('bin search ended in {}'.format(hi))
+    logger.debug('bin search ended in {}'.format(hi))
 
     for i, weighted_configs in enumerate(x_i_C2val):
-        logging.debug('{}: {}'.format(i, weighted_configs))
+        logger.debug('{}: {}'.format(i, weighted_configs))
 
     frac_config_mat = get_frac_config_mat(x_i_C2val)
 
     frac_makespan = utils.makespan(initial_sigmas, frac_config_mat)
-    logging.info('fractional makespan is {}'.format(frac_makespan))
+    logger.info('fractional makespan is {}'.format(frac_makespan))
 
-    sum_votes = np.zeros(m)
+    sum_votes = np.zeros(m, dtype=np.float32)
 
     # strs to arrays
     for i, weighted_configs in enumerate(x_i_C2val):
         for config, weight in weighted_configs:
             values = [int(val) for val in config.split(',')]
-            vote_vector = np.array(values)
+            vote_vector = np.array(values, dtype=np.int32)
             sum_votes += vote_vector * weight
 
     # print sum_votes
 
-    logging.debug("start fixing loops")
-    result_range = set([])
-    best_makespan = sys.maxint
+    logger.debug("start fixing loops")
+
+
+
+
+    result_range = set()
+    best_makespan = sys.maxsize
     best_config_mat = None
     for i in range(1000):
 
@@ -360,21 +384,21 @@ def find_strategy(initial_sigmas, k):
         # turn the configs to lists of ints
         res = [[int(v) for v in con.split(',')] for con in res]
 
-        frac_config_mat = np.array(res)
-        logging.debug('interim configs:')
-        logging.debug(frac_config_mat)
+        frac_config_mat = np.array(res, dtype=np.int32)
+        logger.debug('interim configs:')
+        logger.debug(frac_config_mat)
         histogram = np.sum(frac_config_mat, axis=0)
-        logging.debug('histogram={}'.format(histogram))
+        logger.debug('histogram={}'.format(histogram))
 
-        cur_config_mat = fix_interim_configs(frac_config_mat, k, initial_sigmas)
+        cur_config_mat = fix_rounding_result(frac_config_mat, k, initial_sigmas)
         cur_makespan = utils.makespan(initial_sigmas, cur_config_mat)
         result_range.add(cur_makespan)
         if cur_makespan < best_makespan:
             best_makespan = cur_makespan
             best_config_mat = cur_config_mat
-    logging.debug("end fixing loops result range {}".format(result_range))
+    logger.debug("end fixing loops result range {}".format(result_range))
 
-    # logging.info('fractional makespan is {}'.format(frac_makespan))
-    # logging.debug( 'final configs:')
-    # logging.debug( best_config_mat)
+    # logger.info('fractional makespan is {}'.format(frac_makespan))
+    # logger.debug( 'final configs:')
+    # logger.debug( best_config_mat)
     return frac_config_mat, best_config_mat
