@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
 
@@ -14,7 +14,7 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    initial_sigmas = np.array([5, 6, 6, 6, 7])
+    initial_sigmas = np.array([5, 6, 6, 6, 7], dtype=np.int32)
     k = 2
     trial = 1
     n = 4
