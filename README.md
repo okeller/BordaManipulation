@@ -1,5 +1,5 @@
 # BordaManipulation
-Code for the paper "New Approximation for Borda Coalitional Manipulation"
+Code for Orgad Keller, Avinatan Hassidim, Boam Hazon:  "New Approximation for Borda Coalitional Manipulation"
 
 ### Requirements:
 * Python 2.7 and up
