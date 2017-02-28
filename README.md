@@ -1,4 +1,4 @@
-# BordaManipulation
+# New Approximation for Borda Coalitional Manipulation
 Code for Orgad Keller, Avinatan Hassidim, Boam Hazon:  "New Approximation for Borda Coalitional Manipulation"
 
 ### Requirements:
