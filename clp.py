@@ -17,6 +17,8 @@ import utils
 # PY_OLD = sys.version_info[0] < 3
 logger = logging.getLogger(__name__)
 
+# mode = 'per_cand'
+mode = 'one'
 
 # def bitarray_to_vote_vector(ba, m):
 #     vote_vector = np.zeros((m), dtype=int)
@@ -113,7 +115,7 @@ def aslist(mat):
     return [mat[i] for i in range(len(mat))]
 
 
-def find_violated_constraint(y, z, targets, k):
+def find_violated_constraints(y, z, targets, k, mode='one'):
     """
     This is the separation oracle. Given (y,z) representing a prosoped solution to the dual of the C-LP, it find
     a violated constrait or returns `None`.
@@ -126,11 +128,15 @@ def find_violated_constraint(y, z, targets, k):
     Returns:
         cvxopt.modeling.constraint: the violated constraint
     """
+    assert mode in ['one', 'per_cand', 'per_cand_prune']
+    if y.value is None or z.value is None:
+        return None
     y_vals, z_vals = aslist(y.value), aslist(z.value)
     num_item_types = len(z_vals)
 
     natural_bound = (len(z_vals) - 1) * k
 
+    constraints = []
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
         subset = k_multiset_knapsack(values=z_vals, weights=range(num_item_types), k=k,
@@ -149,8 +155,12 @@ def find_violated_constraint(y, z, targets, k):
             c = dot(vote_vector_mat, z) <= y[i]
             c.name = str('{}\t{}').format(i, vote_vector_rep)
             # c.name = (i, subset)
-            return c  # the constraint itself
-    return None
+            constraints.append( c)  # the constraint itself
+            if mode == 'one':
+                break
+            else:
+                pass
+    return constraints
 
 
 def get_frac_config_mat(x_i_C2val):
@@ -197,7 +207,7 @@ def lp_solve(m, k, sigmas, target):
     return lp_solve_by_gaps(m, k, gaps)
 
 
-def lp_solve_by_gaps(m, k, gaps):
+def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.001):
     """
 
     Args:
@@ -208,22 +218,59 @@ def lp_solve_by_gaps(m, k, gaps):
     Returns:
 
     """
+    assert mode in ['one', 'per_cand', 'per_cand_prune']
     y = variable(m, name=str('y'))
     z = variable(m, name=str('z'))
     obj_func = sum(y) - k * sum(z)
     constraints = [y >= 0, z >= 0]
     prog = op(obj_func, constraints)
     prog.solve()
-    c = find_violated_constraint(y, z, gaps, k)
-    while c is not None:
-        logger.debug('Adding constraint {}'.format(c))
-        constraints.append(c)
+
+    new_constraints = find_violated_constraints(y, z, gaps, k, mode=mode)
+    while len(new_constraints) > 0:
+        # logger.info('(y,z)={}{} status={}'.format(aslist(y.value), aslist(z.value), prog.status))
+
+
+
+        logger.info('Adding {} constraints'.format(len(new_constraints)))
+        constraints += new_constraints
         prog = op(obj_func, constraints)
-        prog.solve()
-        c = find_violated_constraint(y, z, gaps, k)
-    logger.debug('reached obj val: {}'.format(prog.objective.value()))
+        prog.solve(solver='default')
+
+        if mode == 'per_cand_prune':
+            non_pruned_constraints = []
+            for c in constraints:
+                if c.name and c.multiplier.value is not None and c.multiplier.value[0] > tol:
+                    non_pruned_constraints.append(c)
+                else:
+                    non_pruned_constraints.append(c)
+            logger.info('pruned {} constraints'.format(len(constraints) - len(non_pruned_constraints)))
+            constraints = non_pruned_constraints
+
+        # logger.warn('in status {}'.format(prog.status))
+
+
+
+        new_constraints = find_violated_constraints(y, z, gaps, k, mode=mode)
+    # logger.info('(y,z)={}{} status={}'.format(aslist(y.value), aslist(z.value), prog.status))
+    logger.info('reached obj val: {}'.format(prog.objective.value()))
+    logger.info('{} constraints were added'.format(len(constraints) -2))
+
+    if mode == 'per_cand_prune':
+        non_pruned_constraints = []
+        for c in constraints:
+            if c.name and c.multiplier.value is not None and c.multiplier.value[0] > tol:
+                non_pruned_constraints.append(c)
+            else:
+                non_pruned_constraints.append(c)
+        logger.info('pruned {} constraints'.format(len(constraints) - len(non_pruned_constraints)))
+        constraints = non_pruned_constraints
+
+
+
+
     if 'infeasible' in prog.status:
-        logger.debug(prog.status)
+        logger.warn(prog.status)
         return prog.status
     logger.debug('{} {}'.format(y.value, z.value))
     x_i_C2val = [[] for _ in range(m)]
@@ -320,11 +367,14 @@ def find_strategy(initial_sigmas, k):
         target = 1
 
     # find target by one-sided binary search
+    logger.warning('target={}'.format(target))
     x_i_C2val = lp_solve(m, k, initial_sigmas, target)
     last_target = target
     while x_i_C2val == 'dual infeasible':
+
         last_target = target
         target *= 2
+        logger.warning('target={}'.format(target))
         x_i_C2val = lp_solve(m, k, initial_sigmas, target)
 
     # then find target by two-sided binary search
@@ -333,7 +383,9 @@ def find_strategy(initial_sigmas, k):
     last_dual_feasible_solution = x_i_C2val
     # binary search
     while lo < hi:
+
         mid = (lo + hi) // 2
+        logger.warning('mid={}'.format(mid))
         x_i_C2val = lp_solve(m, k, initial_sigmas, mid)
         if x_i_C2val == 'dual infeasible':
             lo = mid + 1
