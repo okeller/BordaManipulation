@@ -8,14 +8,13 @@ from builtins import (range,
 
 import numpy as np
 from cvxopt import matrix
-from cvxopt.modeling import variable, sum, op, dot
-
-import utils
+from cvxopt.modeling import sum
 
 # PY_OLD = sys.version_info[0] < 3
+import lp_solver
+import utils
 
 logger = logging.getLogger(__name__)
-
 
 
 def backtrack(taken, weight_bound, multiplicity, weights):
@@ -119,38 +118,37 @@ def find_violated_constraints(y, z, targets, k, mode='one'):
         cvxopt.modeling.constraint: the violated constraint
     """
     assert mode in ['one', 'per_cand', 'per_cand_prune']
-    if y.value is None or z.value is None:
-        return None
-    y_vals, z_vals = aslist(y.value), aslist(z.value)
-    num_item_types = len(z_vals)
 
-    natural_bound = (len(z_vals) - 1) * k
+    m = len(z)
+    num_item_types = len(z)
+
+    natural_bound = (len(z) - 1) * k
 
     constraints = []
+    names = []
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
-        subset = k_multiset_knapsack(values=z_vals, weights=range(num_item_types), k=k,
-                                     target_value=y_vals[i],
+        subset = k_multiset_knapsack(values=z, weights=range(num_item_types), k=k,
+                                     target_value=y[i],
                                      weight_bound=min(targets[i], natural_bound))
-
 
         if subset:
             vote_vector, _ = np.histogram(subset, bins=range(num_item_types + 1))
             assert len(vote_vector) == num_item_types
             vote_vector_rep = ','.join([str(v) for v in vote_vector])
 
-            vote_vector_mat = matrix(np.array(vote_vector, dtype=np.float64), tc=str('d'))
-            c = dot(vote_vector_mat, z) <= y[i]
-            c.name = str('{}\t{}').format(i, vote_vector_rep)
-            # c.name = (i, subset)
+            y_component = np.zeros(m, dtype=float)
+            y_component[i] = -1.0
+            c = np.hstack((y_component, vote_vector))
+            name = ('C', i, vote_vector_rep)
+
             constraints.append(c)  # the constraint itself
+            names.append(name)
             if mode == 'one':
                 break
             else:
                 pass
-    return constraints
-
-
+    return constraints, names
 
 
 def get_frac_config_mat(x_i_C2val):
@@ -168,7 +166,10 @@ def get_frac_config_mat(x_i_C2val):
 def draw_interim_configs(x_i_C2val):
     res = []
     for weighted_configs in x_i_C2val:
-        weights = np.array([v for k, v in weighted_configs], dtype=np.float32)
+        weight_list = [v for k, v in weighted_configs]
+        weight_list = [0.0 if v < 0.0 else v for v in weight_list]
+        weights = np.array(weight_list, dtype=np.float32)
+
         weights /= np.sum(weights)  # re-normalize in order to fix rounding issues
 
         configs = [k for k, v in weighted_configs]
@@ -197,7 +198,7 @@ def lp_solve(m, k, sigmas, target, mode='one'):
     return lp_solve_by_gaps(m, k, gaps, mode=mode)
 
 
-def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.001):
+def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.000001):
     """
 
     Args:
@@ -209,64 +210,77 @@ def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.001):
 
     """
     assert mode in ['one', 'per_cand', 'per_cand_prune']
-    y = variable(m, name=str('y'))
-    z = variable(m, name=str('z'))
-    obj_func = sum(y) - k * sum(z)
-    constraints = [y >= 0, z >= 0]
-    prog = op(obj_func, constraints)
-    prog.solve()
+    A_trivial = -np.eye(2 * m, dtype=float)
+    non_trivial_constraints = []
+    non_trivial_const_names = []
 
-    new_constraints = find_violated_constraints(y, z, gaps, k, mode=mode)
+    c = np.array(([1] * m) + ([-k] * m), dtype=float)
+
+    var_names = [('y', i) for i in range(m)] + [('z', i) for i in range(m)]
+    triv_const_names = [('trivial', k, v) for k, v in var_names]
+
+    lp = lp_solver.HomogenicLpSolver(A_trivial, c, var_names=var_names, const_names=triv_const_names)
+    lp.solve()
+
+    res = lp.x
+    y = res[:m]
+    z = res[m:]
+
+    new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, k, mode=mode)
     while len(new_constraints) > 0:
-        # logger.info('(y,z)={}{} status={}'.format(aslist(y.value), aslist(z.value), prog.status))
-
-
 
         logger.info('Adding {} constraints'.format(len(new_constraints)))
-        constraints += new_constraints
-        prog = op(obj_func, constraints)
-        prog.solve(solver='default')
 
-        if mode == 'per_cand_prune':
+        non_trivial_constraints += new_constraints
+        non_trivial_const_names += new_constraints_names
+
+        A = np.vstack([A_trivial] + non_trivial_constraints)
+        const_names = triv_const_names + non_trivial_const_names
+
+        lp = lp_solver.HomogenicLpSolver(A, c, var_names=var_names, const_names=const_names)
+        lp.solve()
+
+        res = lp.x
+        y = res[:m]
+        z = res[m:]
+
+        # when the dummy constraint is in effect, it is possible that active constraints would still have weight 0. I think
+        # that this is due to numerical issues. Hence the `lp.status != lp_solver.UNBOUNDED`
+        if mode == 'per_cand_prune' and lp.status != lp_solver.UNBOUNDED:
             non_pruned_constraints = []
-            for c in constraints:
-                if c.name and c.multiplier.value is not None and c.multiplier.value[0] > tol:
+            non_pruned_names = []
+            for c, n in zip(non_trivial_constraints, non_trivial_const_names):
+                if lp[n] is not None and lp[n] > tol:
                     non_pruned_constraints.append(c)
+                    non_pruned_names.append(n)
                 else:
-                    non_pruned_constraints.append(c)
-            logger.info('pruned {} constraints'.format(len(constraints) - len(non_pruned_constraints)))
-            constraints = non_pruned_constraints
+                    xxxxx = 1
+                    pass
+                    # non_pruned_constraints.append(c)
+                    # non_pruned_names.append(n)
+            logger.info('pruned {} constraints'.format(len(non_trivial_constraints) - len(non_pruned_constraints)))
+            non_trivial_constraints = non_pruned_constraints
+            non_trivial_const_names = non_pruned_names
 
         # logger.warn('in status {}'.format(prog.status))
 
-        new_constraints = find_violated_constraints(y, z, gaps, k, mode=mode)
+        new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, k, mode=mode)
 
     # logger.info('(y,z)={}{} status={}'.format(aslist(y.value), aslist(z.value), prog.status))
-    logger.info('reached obj val: {}'.format(prog.objective.value()))
-    logger.info('{} constraints were added'.format(len(constraints) - 2))
 
-    if mode == 'per_cand_prune':
-        non_pruned_constraints = []
-        for c in constraints:
-            if c.name and c.multiplier.value is not None and c.multiplier.value[0] > tol:
-                non_pruned_constraints.append(c)
-            else:
-                non_pruned_constraints.append(c)
-        logger.info('pruned {} constraints'.format(len(constraints) - len(non_pruned_constraints)))
-        constraints = non_pruned_constraints
+    logger.info('reached obj val: {}'.format(lp.objective))
+    logger.info('{} constraints were added'.format(len(non_trivial_constraints)))
 
-    if 'infeasible' in prog.status:
-        logger.warn(prog.status)
-        return prog.status
-    logger.debug('{} {}'.format(y.value, z.value))
+    status = lp.status
+    if status in [lp_solver.INFEASIBLE, lp_solver.UNBOUNDED]:
+        logger.warning('status is {}'.format(status))
+        return status
+    logger.info('{} {}'.format(y, z))
     x_i_C2val = [[] for _ in range(m)]
-    for c in constraints:
-        if c.name:
-            i_str, subset_str = c.name.split()
-            x_i_C2val[int(i_str)].append((subset_str, c.multiplier.value[0]))
+    for c, n in zip(non_trivial_constraints, non_trivial_const_names):
+        _, i, subset_str = n
+        x_i_C2val[i].append((subset_str, lp[n]))
     return x_i_C2val
-
-
 
 
 def fix_rounding_result(config_mat, k, initial_sigmas):
@@ -326,8 +340,7 @@ def find_strategy(initial_sigmas, k, mode='one'):
     logger.warning('target={}'.format(target))
     x_i_C2val = lp_solve(m, k, initial_sigmas, target, mode=mode)
     last_target = target
-    while x_i_C2val == 'dual infeasible':
-
+    while x_i_C2val == lp_solver.UNBOUNDED:
         last_target = target
         target *= 2
         logger.warning('target={}'.format(target))
@@ -343,7 +356,7 @@ def find_strategy(initial_sigmas, k, mode='one'):
         mid = (lo + hi) // 2
         logger.warning('mid={}'.format(mid))
         x_i_C2val = lp_solve(m, k, initial_sigmas, mid, mode=mode)
-        if x_i_C2val == 'dual infeasible':
+        if x_i_C2val == lp_solver.UNBOUNDED:
             lo = mid + 1
         else:
             last_dual_feasible_solution = x_i_C2val
@@ -354,7 +367,7 @@ def find_strategy(initial_sigmas, k, mode='one'):
 
     x_i_C2val = last_dual_feasible_solution
 
-    assert x_i_C2val != 'dual infeasible'
+    assert x_i_C2val != lp_solver.UNBOUNDED
 
     logger.debug('bin search ended in {}'.format(hi))
 

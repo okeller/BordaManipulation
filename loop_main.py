@@ -11,7 +11,7 @@ from cvxopt import solvers
 from sklearn.externals.joblib import delayed, Parallel
 
 import average_fit
-import clp
+import clp_general
 import utils
 
 solvers.options['show_progress'] = False
@@ -37,7 +37,7 @@ def run(n, k, m, trial, initial_sigmas):
     logger.info('gaps={}'.format(gaps))
     # af_makespan, clp_makespan = 0, 1
     init_gaps = gaps
-    frac_res, clp_res = clp.find_strategy(initial_sigmas, k)
+    frac_res, clp_res = clp_general.find_strategy(initial_sigmas, k, mode='per_cand')
     fractional_makespan = utils.makespan(initial_sigmas, frac_res)
     clp_makespan = utils.makespan(initial_sigmas, clp_res
                                   )
