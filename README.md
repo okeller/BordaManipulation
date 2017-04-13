@@ -9,6 +9,7 @@ Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coal
 * NumPy
 * SciPy
 * cvxopt
+* glpk
 * tqdm
 * Pandas
 * scikit-learn (only for joblib)
