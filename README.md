@@ -1,5 +1,5 @@
 # New Approximation for Borda Coalitional Manipulation
-This reporistory contains the code for the paper:
+This repository contains the code for the paper:
 
 Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coalitional Manipulation** to appear in AAMAS 2017.
 
