@@ -332,22 +332,25 @@ def find_strategy(initial_sigmas, k, mode='one'):
 
     """
     m = len(initial_sigmas)
-    target = np.max(initial_sigmas)
-    if target == 0:
-        target = 1
+    lo = np.max(initial_sigmas)
+    hi = lo
+
+    interval_size = 1
 
     # find target by one-sided binary search
-    logger.warning('target={}'.format(target))
-    x_i_C2val = lp_solve(m, k, initial_sigmas, target, mode=mode)
-    last_target = target
+    logger.warning('target={}'.format(hi))
+    x_i_C2val = lp_solve(m, k, initial_sigmas, hi, mode=mode)
+
     while x_i_C2val == lp_solver.UNBOUNDED:
-        last_target = target
-        target *= 2
-        logger.warning('target={}'.format(target))
-        x_i_C2val = lp_solve(m, k, initial_sigmas, target, mode=mode)
+        lo = hi
+        # target *= 2
+        hi = hi + interval_size
+        interval_size *= 2
+        logger.warning('target={}'.format(hi))
+        x_i_C2val = lp_solve(m, k, initial_sigmas, hi, mode=mode)
 
     # then find target by two-sided binary search
-    lo, hi = last_target, target
+    # lo, hi = last_hi, hi
 
     last_dual_feasible_solution = x_i_C2val
     # binary search
