@@ -217,7 +217,7 @@ def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.000001):
     c = np.array(([1] * m) + ([-k] * m), dtype=float)
 
     var_names = [('y', i) for i in range(m)] + [('z', i) for i in range(m)]
-    triv_const_names = [('trivial', k, v) for k, v in var_names]
+    triv_const_names = [('trivial', kk, v) for kk, v in var_names]
 
     lp = lp_solver.HomogenicLpSolver(A_trivial, c, var_names=var_names, const_names=triv_const_names)
     lp.solve()

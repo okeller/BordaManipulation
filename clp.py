@@ -85,7 +85,7 @@ def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.00
     if best_val > target_value + tol:
         logger.debug('best val: {} target: {}'.format(best_val, target_value))
         subset = backtrack(last_taken, weight_bound, k, weights)
-        assert best_val - tol < sum(values[item] for item in subset) < best_val + tol
+        # assert best_val - tol < sum(values[item] for item in subset) < best_val + tol
         assert isinstance(subset, list)
         return subset
     else:

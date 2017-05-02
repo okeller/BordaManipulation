@@ -9,7 +9,13 @@ OPTIMAL = 0
 UNBOUNDED = 1
 INFEASIBLE = 2
 
-solver = 'glpk'
+import platform
+
+if platform.system() == 'Windows':
+    solver = None  # CVXOPT's conelp
+else:
+    solver = 'glpk'
+
 
 class HomogenicLpSolver(object):
     """
@@ -27,7 +33,6 @@ class HomogenicLpSolver(object):
         self.A = A
         self.b = np.zeros(A.shape[0], dtype=float)
         self.c = c
-
 
     def solve(self):
         c_ = matrix(self.c)
