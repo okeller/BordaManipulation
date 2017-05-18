@@ -332,7 +332,20 @@ def find_strategy(initial_sigmas, k, mode='one'):
 
     """
     m = len(initial_sigmas)
-    lo = np.max(initial_sigmas)
+
+    ## hueristic search : try (m-1)/2 * k + average(initial_sigmas) - 1
+    # heuristic_lo = int(float(m-1)/2 * k + initial_sigmas.mean() - 1)
+    # x_i_C2val = lp_solve(m, k, initial_sigmas, heuristic_lo, mode=mode)
+    # if x_i_C2val == lp_solver.UNBOUNDED:
+    #     lo = heuristic_lo + 1
+    # else:
+    #     lo = np.max(initial_sigmas)
+
+    lower_bound_1 = np.max(initial_sigmas)
+    lower_bound_2 = int(float(m-1)/2 * k + initial_sigmas.mean())  # i.e. average mass
+
+    lo = max(lower_bound_1, lower_bound_2)
+
     hi = lo
 
     interval_size = 1

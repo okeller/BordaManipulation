@@ -1,10 +1,11 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
+# from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
 
 import logging
 import os
 
+from io import StringIO, BytesIO
 import numpy as np
 import pandas as pd
 from cvxopt import solvers
@@ -21,12 +22,12 @@ logger = logging.getLogger(__name__)
 # k = 4
 # n = 8
 #
-trials = 8
+trials = 20
 # start = 4
 # end = 10
 
 
-folder = 'output2'
+folder = 'ss3'
 if not os.path.exists(folder):
     os.makedirs(folder)
 
@@ -48,25 +49,48 @@ def run(n, k, m, trial, initial_sigmas):
         'n={} k={} m={} trial={} frac={} CLP={} AF={}'.format(n, k, m, trial, fractional_makespan, clp_makespan,
                                                               af_makespan))
     result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
+
+
+    df = pd.DataFrame(data=[result_to_append],
+                              columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
+                                       'af_makespan'])
+
+    filename = 'results-n{}-k{}-m{}-t{}-tt{}.csv'.format(n, k, m, trials, trial)
+
+    if folder == 's3':
+        import boto3
+        csv_buffer = BytesIO()
+        df.to_csv(csv_buffer, encoding='utf-8')
+        s3_resource = boto3.resource('s3')
+        s3_resource.Object('borda', filename).put(Body=csv_buffer.getvalue())
+    else:
+        abs_path = os.path.join(folder, filename)
+        df.to_csv(abs_path, index=False)
+
     return result_to_append
 
 
 if __name__ == '__main__':
 
-    for m in range(4, 65, 10):
-        logm = int(np.math.ceil(np.math.log(m, 2)))
-        max_logk = logm // 2
-        for logn in range(2, max_logk + 2):
-            # m = 2 ** logm
-            n = 2 ** logn
-            k = n // 2
+    # for m in range(34, 35, 10):
+    #     logm = int(np.math.ceil(np.math.log(m, 2)))
+    #     max_logk = logm // 2
+    #     for logn in range(4, max_logk + 2):
+    #         # m = 2 ** logm
+    #         n = 2 ** logn
+    #         k = n // 2
+    #
+    #         logger.info('m={} n={}'.format(m, n))
 
-            logger.info('m={} n={}'.format(m, n))
 
-            res = Parallel(n_jobs=1) \
-                (delayed(run)(n, k, m, trial, utils.draw_uniform(m, n))
-                 for trial in range(trials)
-                 )
+
+
+    k = 6
+    n = 12
+
+    experiments = (delayed(run)(n, k, m, trial, utils.draw_uniform(m, n)) for m in range(24,65,10) for trial in range(trials))
+
+    res = Parallel(n_jobs=1)(experiments)
 
             # for m in trange(start, end):
             #     for trial in range(trials):
@@ -75,13 +99,25 @@ if __name__ == '__main__':
             #         result_to_append = run(n,k,m,trial)
             #         res.append(result_to_append)
 
-            df = pd.DataFrame(data=res,
-                              columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
-                                       'af_makespan'])
+            # df = pd.DataFrame(data=res,
+            #                   columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
+            #                            'af_makespan'])
+            #
+            # filename = 'results-n{}-k{}-m{}-t{}.csv'.format(n, k, m, trials)
+            #
+            #
+            # if folder == 's3':
+            #     import boto3
+            #     csv_buffer = BytesIO()
+            #     df.to_csv(csv_buffer, encoding='utf-8')
+            #     s3_resource = boto3.resource('s3')
+            #     s3_resource.Object('borda', filename).put(Body=csv_buffer.getvalue())
+            # else:
+            #     abs_path = os.path.join(folder, filename)
+            #     df.to_csv(abs_path, index=False)
 
-            filename = 'results-n{}-k{}-m{}-t{}.csv'.format(n, k, m, trials)
-            abs_path = os.path.join(folder, filename)
-            df.to_csv(abs_path, index=False)
+
+
 
 
 # means = np.mean(results,axis=1)
