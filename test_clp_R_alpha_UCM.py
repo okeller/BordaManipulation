@@ -22,7 +22,7 @@ import time
 current_milli_time = lambda: int(round(time.time() * 1000))
 
 
-class TestClpRAlphaUCM(unittest.TestCase):
+class TestClpRAlphaUcm(unittest.TestCase):
     def test_find_violated_constraints(self):
         y = np.array([2.5, 10., 20.])
         z = np.array([0.5, 0.5, 3.0])
@@ -60,7 +60,7 @@ class TestClpRAlphaUCM(unittest.TestCase):
         logger.warning('Took time {}ms, frac_res={}'.format(t2 - t1, frac_res))
 
         fractional_makespan = utils.makespan(initial_sigmas, frac_res, alpha=alpha)
-        clp_makespan = utils.makespan(initial_sigmas, clp_res,alpha=alpha)
+        clp_makespan = utils.makespan(initial_sigmas, clp_res, alpha=alpha)
         gaps = utils.sigmas_to_gaps(initial_sigmas, clp_makespan)
         af_res = average_fit.solve_one_gaps(k, gaps, verbose=False)
         af_makespan = utils.makespan(initial_sigmas, af_res, alpha=alpha)
@@ -69,6 +69,31 @@ class TestClpRAlphaUCM(unittest.TestCase):
                                                    af_makespan))
         # result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
         # print(result_to_append)
+
+    def test_draw_interim_configs(self):
+        input = [
+            [(u'config_A1', 0.5), (u'config_A2', 0.5)],
+            [(u'config_B1', 0.9), (u'config_B2', 0.1)]]
+
+        output = clp_R_alpha_UCM.draw_interim_configs(input)
+        self.assertEquals(len(output), 2)
+        self.assertTrue(output[0].startswith(u'config_A'))
+        self.assertTrue(output[1].startswith(u'config_B'))
+
+    # @nottest
+    def test_fix_rounding_result_weighted(self):
+        k = 2
+        m = 3
+
+        config_mat = np.array([[1, 1, 0], [0, 0, 2], [1, 0, 1]])
+
+        initial_sigmas = np.array([0, 1, 1])
+        weights = np.array([1, 1])
+        alpha = np.arange(m)  # borda
+
+        res_config_mat = clp_R_alpha_UCM.fix_rounding_result(config_mat, alpha, k, initial_sigmas)
+
+        self.assertEquals(np.ravel(res_config_mat).tolist(), [1, 1, 0, 0, 0, 2, 1, 1, 0])
 
 
 if __name__ == '__main__':

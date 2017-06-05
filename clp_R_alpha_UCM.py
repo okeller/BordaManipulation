@@ -125,7 +125,11 @@ def lp_solve_by_gaps(m, alpha, k, gaps, mode='one', tol=0.000001):
     Returns:
 
     """
-    assert mode in ['one', 'per_cand', 'per_cand_prune']
+
+    if mode not in ['one', 'per_cand', 'per_cand_prune']:
+        raise ValueError("mode not in ['one', 'per_cand', 'per_cand_prune']")
+
+
     A_trivial = -np.eye(2 * m, dtype=float)
     non_trivial_constraints = []
     non_trivial_const_names = []
@@ -248,6 +252,21 @@ def find_strategy(initial_sigmas, alpha, k, mode='one'):
     Returns:
 
     """
+    if mode not in ['one', 'per_cand', 'per_cand_prune']:
+        raise ValueError("mode not in ['one', 'per_cand', 'per_cand_prune']")
+    if len(initial_sigmas) != len(alpha):
+        raise ValueError("len(initial_sigmas) != len(alpha)")
+    if not np.all(alpha == sorted(alpha)):
+        raise ValueError("alpha should be sorted in non-decreasing manner.")
+    if not np.issubdtype(alpha.dtype, np.integer):
+        raise ValueError('alpha should contain integers.')
+    if not np.issubdtype(initial_sigmas.dtype, np.integer):
+        raise ValueError('initial_sigmas should contain integers.')
+    # if not np.issubdtype(np.type(k), np.integer):
+    #     raise ValueError('k should be an integer.')
+
+
+
     m = len(initial_sigmas)
 
     initial_sigmas_sorted = np.sort(initial_sigmas)[::-1]

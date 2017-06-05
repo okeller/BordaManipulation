@@ -96,7 +96,7 @@ class TestClpRAlphaWcm(unittest.TestCase):
         weights = np.array([1, 1])
         alpha = np.arange(m)  # borda
 
-        res_config_mat = clp_R_alpha_WCM.fix_rounding_result_weighted(config_mat, weights, initial_sigmas, alpha)
+        res_config_mat = clp_R_alpha_WCM.fix_rounding_result_weighted(config_mat, alpha, weights, initial_sigmas)
 
         self.assertEquals(np.ravel(res_config_mat).tolist(), [0, 1, 2, 2, 1, 0])
 

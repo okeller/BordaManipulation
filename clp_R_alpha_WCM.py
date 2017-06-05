@@ -211,7 +211,7 @@ def lp_solve_by_gaps(m, alpha, weights, gaps, mode='one', tol=0.000001):
     return x_i_C2val
 
 
-def fix_rounding_result_weighted(config_mat, weights, initial_sigmas, alpha):
+def fix_rounding_result_weighted(config_mat, alpha, weights, initial_sigmas):
     """
 
     :type initial_sigmas: numpy.ndarray
@@ -270,6 +270,19 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
     Returns:
  
     """
+    if mode not in ['one', 'per_cand', 'per_cand_prune']:
+        raise ValueError("mode not in ['one', 'per_cand', 'per_cand_prune']")
+    if len(initial_sigmas) != len(alpha):
+        raise ValueError("len(initial_sigmas) != len(alpha)")
+    if not np.all(alpha == sorted(alpha)):
+        raise ValueError("alpha should be sorted in non-decreasing manner.")
+    if not np.issubdtype(alpha.dtype, np.integer):
+        raise ValueError('alpha should contain integers.')
+    if not np.issubdtype(initial_sigmas.dtype, np.integer):
+        raise ValueError('initial_sigmas should contain integers.')
+    if not np.issubdtype(weights.dtype, np.integer):
+        raise ValueError('weights should contain integers.')
+
     m = len(initial_sigmas)
     k = len(weights)
 
@@ -358,7 +371,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
         # histogram = np.sum(illegal_manip_matrix, axis=0)
         # logger.debug('histogram={}'.format(histogram))
 
-        cur_config_mat = fix_rounding_result_weighted(illegal_config_matrix, weights, initial_sigmas, alpha)
+        cur_config_mat = fix_rounding_result_weighted(illegal_config_matrix, alpha, weights, initial_sigmas)
 
         cur_makespan = utils.weighted_makespan(cur_config_mat, alpha, weights, initial_sigmas)
         result_range.add(cur_makespan)

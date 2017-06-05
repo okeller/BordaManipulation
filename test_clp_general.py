@@ -72,5 +72,31 @@ class TestClpGeneral(unittest.TestCase):
         # print(result_to_append)
 
 
+    def test_draw_interim_configs(self):
+        input = [
+            [(u'config_A1', 0.5), (u'config_A2', 0.5)],
+            [(u'config_B1', 0.9), (u'config_B2', 0.1)]]
+
+        output = clp_general.draw_interim_configs(input)
+        self.assertEquals(len(output), 2)
+        self.assertTrue(output[0].startswith(u'config_A'))
+        self.assertTrue(output[1].startswith(u'config_B'))
+
+    # @nottest
+    def test_fix_rounding_result_weighted(self):
+        k = 2
+        m = 3
+
+        config_mat = np.array([[1, 1, 0], [0, 0, 2], [1, 0, 1]])
+
+        initial_sigmas = np.array([0, 1, 1])
+        weights = np.array([1, 1])
+        alpha = np.arange(m)  # borda
+
+        res_config_mat = clp_general.fix_rounding_result(config_mat, k, initial_sigmas)
+
+        self.assertEquals(np.ravel(res_config_mat).tolist(), [1, 1, 0, 0, 0, 2, 1, 1, 0])
+
+
 if __name__ == '__main__':
     unittest.main()

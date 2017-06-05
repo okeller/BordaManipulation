@@ -335,6 +335,13 @@ def find_strategy(initial_sigmas, k, mode='one'):
     Returns:
 
     """
+    if mode not in ['one', 'per_cand', 'per_cand_prune']:
+        raise ValueError("mode not in ['one', 'per_cand', 'per_cand_prune']")
+    if not np.issubdtype(initial_sigmas.dtype, np.integer):
+        raise ValueError('initial_sigmas should contain integers.')
+        # if not np.issubdtype(np.type(k), np.integer):
+        #     raise ValueError('k should be an integer.')
+
     m = len(initial_sigmas)
 
     ## hueristic search : try (m-1)/2 * k + average(initial_sigmas) - 1
@@ -347,9 +354,6 @@ def find_strategy(initial_sigmas, k, mode='one'):
 
     initial_sigmas_sorted = np.sort(initial_sigmas)[::-1]
     lower_bounds = [int(float(i-1)/2 * k + initial_sigmas_sorted[:i].mean())  for i in range(1,m+1)]
-
-    lower_bound_1 = np.max(initial_sigmas)
-    lower_bound_2 = int(float(m-1)/2 * k + initial_sigmas.mean())  # i.e. average mass
 
     lo = np.max(lower_bounds)
 
