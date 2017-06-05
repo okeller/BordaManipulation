@@ -5,6 +5,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -16,11 +17,12 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def draw_uniform(m,n, rand=None):
+def draw_uniform(m, n, rand=None):
     rankings = draw_uniform_rankings(m, n, rand)
     return rankings_to_initial_sigmas(rankings)
 
-def draw_uniform_rankings(m,n, rand = None):
+
+def draw_uniform_rankings(m, n, rand=None):
     """
 
     :type rand: np.random.RandomState
@@ -38,7 +40,7 @@ def remove_candidtate(rankings, cand):
     :type cand: int
     :type rankings: nupmy.ndarray
     """
-    res = np.zeros((rankings.shape[0], rankings.shape[1]-1))
+    res = np.zeros((rankings.shape[0], rankings.shape[1] - 1), dtype=int)
 
 
 def rankings_to_initial_sigmas(rankings):
@@ -54,16 +56,55 @@ def rankings_to_initial_sigmas(rankings):
     return initial_sigmas
 
 
-def calculate_awarded(config_mat):
+def calculate_awarded(config_mat, initial_sigmas=None):
     m = config_mat.shape[0]
-    awarded = np.zeros(m)
+    awarded = np.zeros(m, dtype=float)
+
+    if initial_sigmas is not None:
+        awarded += initial_sigmas
+
     for j in range(m):
         awarded += config_mat[:, j] * j
     return awarded
 
 
 def makespan(initial_sigmas, config_mat):
-    return np.max(initial_sigmas + calculate_awarded(config_mat))
+    return np.max(calculate_awarded(config_mat, initial_sigmas))
+
+
+def weighted_makespan(config_mat, alphas, weights, initial_sigmas):
+    return np.max(weighted_calculate_awarded(config_mat, alphas, weights, initial_sigmas))
+
+
+def weighted_calculate_awarded(config_mat, alphas, weights, initial_sigmas=None):
+    assert config_mat.shape[0] == len(alphas)
+    scores = np.zeros(config_mat.shape[0], dtype=float)
+
+    if initial_sigmas is not None:
+        scores += initial_sigmas
+
+    for i in range(config_mat.shape[0]):
+        for ell in range(config_mat.shape[1]):
+            scores[i] += weights[ell] * alphas[config_mat[i, ell]]
+
+    return scores
+
+
+def fractional_makespan(initial_sigmas, x_i_C2val, alphas, weights):
+    assert len(initial_sigmas) == len(alphas)
+    scores = np.zeros(len(initial_sigmas), dtype=float)
+
+    scores += initial_sigmas
+
+    for cand, weighted_configs in enumerate(x_i_C2val):
+        for con_str, prob in weighted_configs:
+            sequence = np.array([int(v) for v in con_str.split(',')], dtype=np.int32)
+
+            seq_val = np.sum([alphas[sequence[ell]] * weights[ell] for ell in range(len(sequence))])
+
+            scores[cand] += prob * seq_val
+
+    return np.max(scores)
 
 
 def sigmas_to_gaps(initial_sigmas, target):

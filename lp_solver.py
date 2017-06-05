@@ -72,6 +72,7 @@ class HomogenicLpSolver(object):
         return self._z
 
     def __getitem__(self, item):
+
         if self.var_names is not None and item in self.var_names:
             i = self.var_names.index(item)
             return self._x[i]

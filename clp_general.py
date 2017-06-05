@@ -14,81 +14,82 @@ from cvxopt.modeling import sum
 import lp_solver
 import utils
 
+from knapsacks import k_multiset_knapsack
 logger = logging.getLogger(__name__)
 
 
-def backtrack(taken, weight_bound, multiplicity, weights):
-    """
-    Backtracks the table of `exclusive_knapsack` to produce the resulting multiset
+# def backtrack(taken, weight_bound, multiplicity, weights):
+#     """
+#     Backtracks the table of `exclusive_knapsack` to produce the resulting multiset
+#
+#     Args:
+#         taken (List[List[int]]): the table confirming whether an item was taken or not
+#         weight_bound (int):
+#         multiplicity (int):
+#         weights (List[int]):
+#
+#     Returns:
+#         List[int]: A milti-subset as list
+#
+#     """
+#
+#     res = []
+#     w = weight_bound
+#     for ell in range(multiplicity, 0, -1):
+#         item = taken[w][ell]
+#         res.append(item)
+#         w -= weights[item]
+#     res.reverse()
+#     return res
 
-    Args:
-        taken (List[List[int]]): the table confirming whether an item was taken or not
-        weight_bound (int):
-        multiplicity (int):
-        weights (List[int]):
 
-    Returns:
-        List[int]: A milti-subset as list
-
-    """
-
-    res = []
-    w = weight_bound
-    for ell in range(multiplicity, 0, -1):
-        item = taken[w][ell]
-        res.append(item)
-        w -= weights[item]
-    res.reverse()
-    return res
-
-
-def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.001):
-    """
-    Solves an instance of the k-multiset knapsack
-    Args:
-        values (List[float]): a vector of item values
-        weights (List[int]): a vector of item weights
-        k (int): the size of the resulting multiset
-        target_value (float): a lower bound on resulting subset value
-        weight_bound (numpy.int32): an upper bound on resulting subset weight
-        tol (float): a tolerance parameter
-
-    Returns:
-        List[int]: A multiset of items of size `k` represented as an list containing the histogram of score types.
-
-    """
-
-    assert len(values) == len(weights)
-
-    num_types = len(values)
-
-    mat = np.zeros((weight_bound + 1, k + 1), dtype=np.float32)
-    last_taken = [[-1] * (k + 1) for w in range(weight_bound + 1)]
-    # mat[:, 0] = 0  # init table - we always don't want to take the dummy item
-    for w in range(weight_bound + 1):
-        for ell in range(k + 1):
-            if ell == 0:
-                mat[w, ell] = 0
-            else:
-                mat[
-                    w, ell] = -sys.maxsize  # since we still don't know better, the default is that current option is invalid
-                last_taken[w][ell] = -1
-                for item in range(0, num_types):
-                    if w - weights[item] >= 0:  # if item is relevant, i.e., can be at all taken
-                        if values[item] + mat[w - weights[item], ell - 1] > mat[w, ell]:  # if it given better value
-                            mat[w, ell] = values[item] + mat[w - weights[item], ell - 1]
-                            last_taken[w][ell] = item
-
-    best_val = mat[weight_bound, k]
-
-    if best_val > target_value + tol:
-        logger.debug('best val: {} target: {}'.format(best_val, target_value))
-        subset = backtrack(last_taken, weight_bound, k, weights)
-        assert best_val - tol < sum(values[item] for item in subset) < best_val + tol
-        assert isinstance(subset, list)
-        return subset
-    else:
-        return None
+# def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.001):
+#     """
+#     Solves an instance of the k-multiset knapsack
+#     Args:
+#         values (List[float]): a vector of item values
+#         weights (List[int]): a vector of item weights
+#         k (int): the size of the resulting multiset
+#         target_value (float): a lower bound on resulting subset value
+#         weight_bound (numpy.int32): an upper bound on resulting subset weight
+#         tol (float): a tolerance parameter
+#
+#     Returns:
+#         List[int]: A multiset of items of size `k` represented as an list containing the histogram of score types.
+#
+#     """
+#
+#     assert len(values) == len(weights)
+#
+#     num_types = len(values)
+#
+#     mat = np.zeros((weight_bound + 1, k + 1), dtype=np.float32)
+#     last_taken = [[-1] * (k + 1) for w in range(weight_bound + 1)]
+#     # mat[:, 0] = 0  # init table - we always don't want to take the dummy item
+#     for w in range(weight_bound + 1):
+#         for ell in range(k + 1):
+#             if ell == 0:
+#                 mat[w, ell] = 0
+#             else:
+#                 mat[
+#                     w, ell] = -sys.maxsize  # since we still don't know better, the default is that current option is invalid
+#                 last_taken[w][ell] = -1
+#                 for item in range(0, num_types):
+#                     if w - weights[item] >= 0:  # if item is relevant, i.e., can be at all taken
+#                         if values[item] + mat[w - weights[item], ell - 1] > mat[w, ell]:  # if it given better value
+#                             mat[w, ell] = values[item] + mat[w - weights[item], ell - 1]
+#                             last_taken[w][ell] = item
+#
+#     best_val = mat[weight_bound, k]
+#
+#     if best_val > target_value + tol:
+#         logger.debug('best val: {} target: {}'.format(best_val, target_value))
+#         subset = backtrack(last_taken, weight_bound, k, weights)
+#         assert best_val - tol < sum(values[item] for item in subset) < best_val + tol
+#         assert isinstance(subset, list)
+#         return subset
+#     else:
+#         return None
 
 
 def aslist(mat):
@@ -128,19 +129,20 @@ def find_violated_constraints(y, z, targets, k, mode='one'):
     names = []
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
-        subset = k_multiset_knapsack(values=z, weights=range(num_item_types), k=k,
+        multiset = k_multiset_knapsack(values=z, weights=range(num_item_types), k=k,
                                      target_value=y[i],
                                      weight_bound=min(targets[i], natural_bound))
 
-        if subset:
-            vote_vector, _ = np.histogram(subset, bins=range(num_item_types + 1))
-            assert len(vote_vector) == num_item_types
-            vote_vector_rep = ','.join([str(v) for v in vote_vector])
+        if multiset:
+            configuration, _ = np.histogram(multiset, bins=range(num_item_types + 1))
+            assert len(configuration) == num_item_types
+            vote_vector_rep = ','.join([str(v) for v in configuration])
 
             y_component = np.zeros(m, dtype=float)
             y_component[i] = -1.0
-            c = np.hstack((y_component, vote_vector))
+            c = np.hstack((y_component, configuration))
             name = ('C', i, vote_vector_rep)
+            # name = ('C', i, configuration)
 
             constraints.append(c)  # the constraint itself
             names.append(name)
@@ -291,8 +293,10 @@ def fix_rounding_result(config_mat, k, initial_sigmas):
     :type config_mat: numpy.ndarray
     """
     m = len(initial_sigmas)
-    awarded = utils.calculate_awarded(config_mat)
-    awarded += initial_sigmas
+
+
+    # this is a heauristic to break ties
+    awarded = utils.calculate_awarded(config_mat, initial_sigmas)
 
     tuples = list(enumerate(awarded))
     tuples.sort(key=lambda t: t[1])
@@ -341,10 +345,13 @@ def find_strategy(initial_sigmas, k, mode='one'):
     # else:
     #     lo = np.max(initial_sigmas)
 
+    initial_sigmas_sorted = np.sort(initial_sigmas)[::-1]
+    lower_bounds = [int(float(i-1)/2 * k + initial_sigmas_sorted[:i].mean())  for i in range(1,m+1)]
+
     lower_bound_1 = np.max(initial_sigmas)
     lower_bound_2 = int(float(m-1)/2 * k + initial_sigmas.mean())  # i.e. average mass
 
-    lo = max(lower_bound_1, lower_bound_2)
+    lo = np.max(lower_bounds)
 
     hi = lo
 

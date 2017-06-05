@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
     experiments = (delayed(run)(n, k, m, trial, utils.draw_uniform(m, n)) for m in range(24,65,10) for trial in range(trials))
 
-    res = Parallel(n_jobs=1)(experiments)
+    res = Parallel(n_jobs=-1)(experiments)
 
             # for m in trange(start, end):
             #     for trial in range(trials):

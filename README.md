@@ -15,4 +15,4 @@ Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coal
 * scikit-learn (only for joblib)
 
 ### Running:
-Run and follow the code in [full_test.py](full_test.py).
+Run and follow the code in [full_test.py](test_clp_general.py).
