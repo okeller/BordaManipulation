@@ -16,8 +16,8 @@ class TestUtils(unittest.TestCase):
         config_mat = np.array([[0, 1], [2, 1], [2, 0]])
         initil_sigmas = np.array([10, 11, 12])
         weights = np.array([1, 2])
-        alpha = range(m)  # borda
-        awarded = utils.calculate_awarded(config_mat, alpha, weights, initil_sigmas)
+        alpha = np.arange(m)  # borda
+        awarded = utils.weighted_calculate_awarded(config_mat, alpha, weights, initil_sigmas)
 
         self.assertEquals(awarded.tolist(), [12, 15, 14])
 

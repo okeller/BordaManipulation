@@ -51,7 +51,7 @@ class TestClpRAlphaWcm(unittest.TestCase):
     # @nottest
     def test_full(self):
         initial_sigmas = np.array([5, 6, 6, 6, 7], dtype=np.int32)
-        alpha = np.array([0, 1, 2, 3, 4])  # Borda
+        alpha = np.arange(5)  # Borda
         weights = np.array([1, 1])
         m = len(initial_sigmas)
 
@@ -94,7 +94,7 @@ class TestClpRAlphaWcm(unittest.TestCase):
 
         initial_sigmas = np.array([0, 1, 1])
         weights = np.array([1, 1])
-        alpha = range(m)  # borda
+        alpha = np.arange(m)  # borda
 
         res_config_mat = clp_R_alpha_WCM.fix_rounding_result_weighted(config_mat, weights, initial_sigmas, alpha)
 

@@ -56,28 +56,33 @@ def rankings_to_initial_sigmas(rankings):
     return initial_sigmas
 
 
-def calculate_awarded(config_mat, initial_sigmas=None):
+def calculate_awarded(config_mat, initial_sigmas=None, alpha=None):
     m = config_mat.shape[0]
+
+    if alpha is None:
+        alpha = np.arange(m)
+
+
     awarded = np.zeros(m, dtype=float)
 
     if initial_sigmas is not None:
         awarded += initial_sigmas
 
     for j in range(m):
-        awarded += config_mat[:, j] * j
+        awarded += config_mat[:, j] * alpha[j]
     return awarded
 
 
-def makespan(initial_sigmas, config_mat):
-    return np.max(calculate_awarded(config_mat, initial_sigmas))
+def makespan(initial_sigmas, config_mat, alpha=None):
+    return np.max(calculate_awarded(config_mat, initial_sigmas, alpha))
 
 
-def weighted_makespan(config_mat, alphas, weights, initial_sigmas):
-    return np.max(weighted_calculate_awarded(config_mat, alphas, weights, initial_sigmas))
+def weighted_makespan(config_mat, alpha, weights, initial_sigmas):
+    return np.max(weighted_calculate_awarded(config_mat, alpha, weights, initial_sigmas))
 
 
-def weighted_calculate_awarded(config_mat, alphas, weights, initial_sigmas=None):
-    assert config_mat.shape[0] == len(alphas)
+def weighted_calculate_awarded(config_mat, alpha, weights, initial_sigmas=None):
+    assert config_mat.shape[0] == len(alpha)
     scores = np.zeros(config_mat.shape[0], dtype=float)
 
     if initial_sigmas is not None:
@@ -85,13 +90,13 @@ def weighted_calculate_awarded(config_mat, alphas, weights, initial_sigmas=None)
 
     for i in range(config_mat.shape[0]):
         for ell in range(config_mat.shape[1]):
-            scores[i] += weights[ell] * alphas[config_mat[i, ell]]
+            scores[i] += weights[ell] * alpha[config_mat[i, ell]]
 
     return scores
 
 
-def fractional_makespan(initial_sigmas, x_i_C2val, alphas, weights):
-    assert len(initial_sigmas) == len(alphas)
+def fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights):
+    assert len(initial_sigmas) == len(alpha)
     scores = np.zeros(len(initial_sigmas), dtype=float)
 
     scores += initial_sigmas
@@ -100,7 +105,7 @@ def fractional_makespan(initial_sigmas, x_i_C2val, alphas, weights):
         for con_str, prob in weighted_configs:
             sequence = np.array([int(v) for v in con_str.split(',')], dtype=np.int32)
 
-            seq_val = np.sum([alphas[sequence[ell]] * weights[ell] for ell in range(len(sequence))])
+            seq_val = np.sum([alpha[sequence[ell]] * weights[ell] for ell in range(len(sequence))])
 
             scores[cand] += prob * seq_val
 

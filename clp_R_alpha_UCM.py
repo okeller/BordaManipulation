@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 import sys
-from knapsacks import k_sequnce_knapsack
 # from future import standard_library
-from builtins import *
+from builtins import (range,
+                      zip, int)
 
 import numpy as np
 from cvxopt import matrix
@@ -13,55 +13,50 @@ from cvxopt.modeling import sum
 # PY_OLD = sys.version_info[0] < 3
 import lp_solver
 import utils
-from itertools import chain
+
+from knapsacks import k_multiset_knapsack
 
 logger = logging.getLogger(__name__)
 
 
-
-
-def find_violated_constraints(y, z, targets, alpha, weights, mode='one'):
+def find_violated_constraints(y, z, targets, alpha, k, mode='one'):
     """
-    This is the separation oracle. Given (y,z) representing a proposed solution to the dual of the C-LP, it find
+    This is the separation oracle. Given (y,z) representing a prosoped solution to the dual of the C-LP, it find
     a violated constrait or returns `None`.
     Args:
-        y (numpy.ndarray): the y vector
-        z (numpy.ndarray): the z vector
+        y (cvxopt.modeling.variable): the y vector
+        z (cvxopt.modeling.variable): the z vector
         targets (List[numpy.int32]): list of bounds for each candidate i representing T-sigma(i)
-        
+        k (int): the number of manipulators
 
     Returns:
         cvxopt.modeling.constraint: the violated constraint
     """
     assert mode in ['one', 'per_cand', 'per_cand_prune']
 
-    m = len(y)
-    num_item_types = len(alpha)
-    num_mani = len(weights)
+    m = len(z)
+    num_item_types = len(z)
 
-    natural_bound = np.max(alpha) * np.sum(weights)
+    natural_bound = (len(z) - 1) * k
 
     constraints = []
     names = []
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
+        multiset = k_multiset_knapsack(values=z, weights=alpha, k=k,
+                                       target_value=y[i],
+                                       weight_bound=min(targets[i], natural_bound))
 
-        z_matrix = z.reshape((num_item_types, num_mani))
-        configuration = k_sequnce_knapsack(values=z_matrix, penalties=weights, item_weights=alpha,
-                                           target_value=y[i],
-                                           weight_bound=min(targets[i], natural_bound))
-        if configuration:
-
-            seq_rep = ','.join([str(v) for v in configuration])
+        if multiset:
+            configuration, _ = np.histogram(multiset, bins=range(num_item_types + 1))
+            assert len(configuration) == num_item_types
+            vote_vector_rep = ','.join([str(v) for v in configuration])
 
             y_component = np.zeros(m, dtype=float)
             y_component[i] = -1.0
-
-            z_coeff = [1.0 if configuration[ell] == j else 0.0 for j in range(num_item_types) for ell in
-                       range(len(configuration))]
-
-            c = np.hstack((y_component, z_coeff))
-            name = ('C', i, seq_rep)
+            c = np.hstack((y_component, configuration))
+            name = ('C', i, vote_vector_rep)
+            # name = ('C', i, configuration)
 
             constraints.append(c)  # the constraint itself
             names.append(name)
@@ -72,16 +67,16 @@ def find_violated_constraints(y, z, targets, alpha, weights, mode='one'):
     return constraints, names
 
 
-# def get_frac_config_mat(x_i_C2val, weights, alphas):
-#     fractional_config_mat = np.zeros((len(x_i_C2val), len(x_i_C2val)), dtype=np.float32)
-#
-#     for cand, weighted_configs in enumerate(x_i_C2val):
-#         for con_str, w in weighted_configs:
-#             sequence = np.array([int(v) for v in con_str.split(',')], dtype=np.int32)
-#             for i in sequence:
-#                 fractional_config_mat[cand, :] += w * sequence
-#
-#     return fractional_config_mat
+def get_frac_config_mat(x_i_C2val):
+    fractional_config_mat = np.zeros((len(x_i_C2val), len(x_i_C2val)), dtype=np.float32)
+
+    for cand, weighted_configs in enumerate(x_i_C2val):
+        for con_str, w in weighted_configs:
+            con_array = np.array([int(v) for v in con_str.split(',')], dtype=np.int32)
+
+            fractional_config_mat[cand, :] += w * con_array
+
+    return fractional_config_mat
 
 
 def draw_interim_configs(x_i_C2val):
@@ -103,7 +98,7 @@ def draw_interim_configs(x_i_C2val):
     return res
 
 
-def lp_solve(m, alpha, weights, sigmas, target, mode='one'):
+def lp_solve(m, alpha, k, sigmas, target, mode='one'):
     """
     Solved a C-LP instance
     Args:
@@ -115,37 +110,30 @@ def lp_solve(m, alpha, weights, sigmas, target, mode='one'):
     Returns:
 
     """
-    gaps = target - sigmas
-    return lp_solve_by_gaps(m, alpha, weights, gaps, mode=mode)
+    gaps = [target - sigma for sigma in sigmas]
+    return lp_solve_by_gaps(m, alpha, k, gaps, mode=mode)
 
 
-def lp_solve_by_gaps(m, alpha, weights, gaps, mode='one', tol=0.000001):
+def lp_solve_by_gaps(m, alpha, k, gaps, mode='one', tol=0.000001):
     """
-    
+
     Args:
-        m: 
-        alpha (numpy.ndarray): 
-        weights (numpy.ndarray): 
-        gaps (numpy.ndarray): 
-        mode: 
-        tol: 
+        m (int):
+        k (int):
+        gaps (List[numpy.int32]):
 
     Returns:
 
     """
     assert mode in ['one', 'per_cand', 'per_cand_prune']
-    num_mani = len(weights)
-    A_trivial = -np.eye(m +  # y's
-                        m * num_mani  # z's
-                        , dtype=float)
+    A_trivial = -np.eye(2 * m, dtype=float)
     non_trivial_constraints = []
     non_trivial_const_names = []
 
-    c = np.array(([1] * m) + ([-1] * m * num_mani), dtype=float)
+    c = np.array(([1] * m) + ([-k] * m), dtype=float)
 
-    var_names = [('y', i) for i in range(m)] + [('z', j, ell) for j in range(m) for ell in range(num_mani)]
-
-    triv_const_names = [tuple(chain(*('trivial', v))) for v in var_names]
+    var_names = [('y', i) for i in range(m)] + [('z', i) for i in range(m)]
+    triv_const_names = [('trivial', kk, v) for kk, v in var_names]
 
     lp = lp_solver.HomogenicLpSolver(A_trivial, c, var_names=var_names, const_names=triv_const_names)
     lp.solve()
@@ -154,7 +142,7 @@ def lp_solve_by_gaps(m, alpha, weights, gaps, mode='one', tol=0.000001):
     y = res[:m]
     z = res[m:]
 
-    new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, alpha, weights, mode=mode)
+    new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, alpha, k, mode=mode)
     while len(new_constraints) > 0:
 
         logger.info('Adding {} constraints'.format(len(new_constraints)))
@@ -192,7 +180,7 @@ def lp_solve_by_gaps(m, alpha, weights, gaps, mode='one', tol=0.000001):
 
         # logger.warn('in status {}'.format(prog.status))
 
-        new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, alpha, weights, mode=mode)
+        new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, alpha, k, mode=mode)
 
     # logger.info('(y,z)={}{} status={}'.format(aslist(y.value), aslist(z.value), prog.status))
 
@@ -206,77 +194,65 @@ def lp_solve_by_gaps(m, alpha, weights, gaps, mode='one', tol=0.000001):
     logger.info('{} {}'.format(y, z))
     x_i_C2val = [[] for _ in range(m)]
     for c, n in zip(non_trivial_constraints, non_trivial_const_names):
-        _, i, configuration = n
-        x_i_C2val[i].append((configuration, lp[n]))
+        _, i, subset_str = n
+        x_i_C2val[i].append((subset_str, lp[n]))
     return x_i_C2val
 
 
-def fix_rounding_result_weighted(config_mat, weights, initial_sigmas, alpha):
+def fix_rounding_result(config_mat, alpha, k, initial_sigmas):
     """
 
     :type initial_sigmas: numpy.ndarray
     :param initial_sigmas:
     :type config_mat: numpy.ndarray
     """
-    if len(initial_sigmas) != len(alpha):
-        raise ValueError('len(initial_sigmas) != len(alpha)')
-    if config_mat.shape[0] != len(initial_sigmas):
-        raise ValueError('config_mat.shape[0] !=  len(initial_sigmas)')
-    if config_mat.shape[1] != len(weights):
-        raise ValueError('config_mat.shape[1] !=  len(weights)')
-
     m = len(initial_sigmas)
-    k = len(weights)
 
-    awarded = utils.weighted_calculate_awarded(config_mat, alpha, weights, initial_sigmas)
+    # this is a heauristic to break ties
+    awarded = utils.calculate_awarded(config_mat, initial_sigmas, alpha=alpha)
 
-    # cand_score_tuples = list(enumerate(awarded))
-    # cand_score_tuples = sorted(cand_score_tuples, key=lambda t: t[1])
-    # candidate_order, _ = zip(*cand_score_tuples)
+    tuples = list(enumerate(awarded))
+    tuples.sort(key=lambda t: t[1])
+    candidate_order, _ = zip(*tuples)
 
+    events = []
+    for score_idx in range(m):
+        for cand in candidate_order:
+            multiplicity = config_mat[cand, score_idx]
+            for i in range(multiplicity):
+                events.append((score_idx, cand))
 
-    res_config_mat = np.zeros((m, k), dtype=int)
+    fixed_events = []
+    for i, ev in enumerate(events):
+        fixed_events.append((i // k, ev[1]))
 
-    for ell in range(len(weights)):
-        col = config_mat[:, ell]
-        events = []
-        for cand, score_idx in enumerate(col):
-            events.append((cand, ell, score_idx))
-
-        # sort first score_idx, but break ties according to the awarded order
-        events = sorted(events, key=lambda event_tuple: (event_tuple[2], awarded[event_tuple[0]]))
-        for j, ev in enumerate(events):
-            cand, _, old_score_idx = ev
-            res_config_mat[cand, ell] = j
-            # logger.debug('c_{} score_idx given by {} changed from {} to {}'.format(cand, ell, old_score_idx, j))
-
-    return res_config_mat
-
-
-# def find_strategy_by_gaps(initial_gaps, k):
-#     initial_sigmas = -initial_gaps + np.max(initial_gaps)
-#     return find_strategy(initial_sigmas, k)
+    res = np.zeros((m, m), dtype=np.int32)
+    for ev in fixed_events:
+        score_idx, cand = ev
+        res[cand, score_idx] += 1
+    return res
 
 
-def find_strategy(initial_sigmas, alpha, weights, mode='one'):
+def find_strategy_by_gaps(initial_gaps, k):
+    initial_sigmas = -initial_gaps + np.max(initial_gaps)
+    return find_strategy(initial_sigmas, k)
+
+
+def find_strategy(initial_sigmas, alpha, k, mode='one'):
     """
-    
+
     Args:
-        initial_sigmas (numpy.ndarray): 
-        alpha (numpy.ndarray): 
-        weights (numpy.ndarray): 
-        mode (str): 
- 
+        initial_sigmas:
+        k:
+
     Returns:
- 
+
     """
     m = len(initial_sigmas)
-    k = len(weights)
-
 
     initial_sigmas_sorted = np.sort(initial_sigmas)[::-1]
-    lower_bounds = np.array([alpha[:i].mean() * k + initial_sigmas_sorted[:i].mean()  for i in range(1,m+1)], dtype=np.int32)
-
+    lower_bounds = np.array([alpha[:i].mean() * k + initial_sigmas_sorted[:i].mean() for i in range(1, m + 1)],
+                            dtype=np.int32)
 
     lo = np.max(lower_bounds)
 
@@ -286,7 +262,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
 
     # find target by one-sided binary search
     logger.warning('target={}'.format(hi))
-    x_i_C2val = lp_solve(m, alpha, weights, initial_sigmas, hi, mode=mode)
+    x_i_C2val = lp_solve(m, alpha, k, initial_sigmas, hi, mode=mode)
 
     while x_i_C2val == lp_solver.UNBOUNDED:
         lo = hi
@@ -294,7 +270,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
         hi = hi + interval_size
         interval_size *= 2
         logger.warning('target={}'.format(hi))
-        x_i_C2val = lp_solve(m, k, initial_sigmas, hi, mode=mode)
+        x_i_C2val = lp_solve(m, alpha, k, initial_sigmas, hi, mode=mode)
 
     # then find target by two-sided binary search
     # lo, hi = last_hi, hi
@@ -305,7 +281,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
 
         mid = (lo + hi) // 2
         logger.warning('mid={}'.format(mid))
-        x_i_C2val = lp_solve(m, k, initial_sigmas, mid, mode=mode)
+        x_i_C2val = lp_solve(m, alpha, k, initial_sigmas, mid, mode=mode)
         if x_i_C2val == lp_solver.UNBOUNDED:
             lo = mid + 1
         else:
@@ -324,19 +300,18 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
     for i, weighted_configs in enumerate(x_i_C2val):
         logger.debug('{}: {}'.format(i, weighted_configs))
 
-    # illegal_manip_matrix = get_frac_config_mat(x_i_C2val)
-
-    frac_makespan = utils.fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights)
+    frac_config_mat = get_frac_config_mat(x_i_C2val)
+    frac_makespan = utils.makespan(initial_sigmas, frac_config_mat, alpha=alpha)
     logger.info('fractional makespan is {}'.format(frac_makespan))
 
     sum_votes = np.zeros(m, dtype=np.float32)
 
     # strs to arrays
-    # for i, weighted_configs in enumerate(x_i_C2val):
-    #     for config, weight in weighted_configs:
-    #         values = [int(val) for val in config.split(',')]
-    #         vote_vector = np.array(values, dtype=np.int32)
-    # sum_votes += vote_vector * weight
+    for i, weighted_configs in enumerate(x_i_C2val):
+        for config, weight in weighted_configs:
+            values = [int(val) for val in config.split(',')]
+            vote_vector = np.array(values, dtype=np.int32)
+            sum_votes += vote_vector * weight
 
     # print sum_votes
 
@@ -352,19 +327,18 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
         # turn the configs to lists of ints
         res = [[int(v) for v in con.split(',')] for con in res]
 
-        illegal_config_matrix = np.array(res, dtype=np.int32)
+        frac_config_mat = np.array(res, dtype=np.int32)
         logger.debug('interim configs:')
-        logger.debug(illegal_config_matrix)
-        # histogram = np.sum(illegal_manip_matrix, axis=0)
-        # logger.debug('histogram={}'.format(histogram))
+        logger.debug(frac_config_mat)
+        histogram = np.sum(frac_config_mat, axis=0)
+        logger.debug('histogram={}'.format(histogram))
 
-        cur_config_mat = fix_rounding_result_weighted(illegal_config_matrix, weights, initial_sigmas, alpha)
-
-        cur_makespan = utils.weighted_makespan(cur_config_mat, alpha, weights, initial_sigmas)
+        cur_config_mat = fix_rounding_result(frac_config_mat, alpha, k, initial_sigmas)
+        cur_makespan = utils.makespan(initial_sigmas, cur_config_mat, alpha=alpha)
         result_range.add(cur_makespan)
         if cur_makespan < best_makespan:
             best_makespan = cur_makespan
             best_config_mat = cur_config_mat
     logger.debug("end fixing loops result range {}".format(result_range))
 
-    return illegal_config_matrix, best_config_mat
+    return frac_config_mat, best_config_mat
