@@ -295,7 +295,7 @@ def fix_rounding_result(config_mat, k, initial_sigmas):
     awarded += initial_sigmas
 
     tuples = list(enumerate(awarded))
-    tuples.sort(key=lambda t: t[1])
+    tuples = sorted(tuples, key=lambda t: t[1], reverse=True)
     candidate_order, _ = zip(*tuples)
 
     events = []
