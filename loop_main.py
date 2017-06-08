@@ -27,7 +27,7 @@ trials = 20
 # end = 10
 
 
-folder = 'ss3'
+folder = 'sss3'
 if not os.path.exists(folder):
     os.makedirs(folder)
 
@@ -38,8 +38,7 @@ def run(n, k, m, trial, initial_sigmas):
     logger.info('gaps={}'.format(gaps))
     # af_makespan, clp_makespan = 0, 1
     init_gaps = gaps
-    frac_res, clp_res = clp_general.find_strategy(initial_sigmas, k, mode='per_cand')
-    fractional_makespan = utils.makespan(initial_sigmas, frac_res)
+    fractional_makespan, clp_res = clp_general.find_strategy(initial_sigmas, k, mode='per_cand')
     clp_makespan = utils.makespan(initial_sigmas, clp_res
                                   )
     gaps = utils.sigmas_to_gaps(initial_sigmas, clp_makespan)
@@ -50,14 +49,13 @@ def run(n, k, m, trial, initial_sigmas):
                                                               af_makespan))
     result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
 
-
     df = pd.DataFrame(data=[result_to_append],
-                              columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
-                                       'af_makespan'])
+                      columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
+                               'af_makespan'])
 
-    filename = 'results-n{}-k{}-m{}-t{}-tt{}.csv'.format(n, k, m, trials, trial)
+    filename = 'results-m{}-k{}-n{}-t{}-tt{}.csv'.format(m, k, n, trials, trial)
 
-    if folder == 's3':
+    if folder is None:  # s3
         import boto3
         csv_buffer = BytesIO()
         df.to_csv(csv_buffer, encoding='utf-8')
@@ -71,57 +69,8 @@ def run(n, k, m, trial, initial_sigmas):
 
 
 if __name__ == '__main__':
-
-    # for m in range(34, 35, 10):
-    #     logm = int(np.math.ceil(np.math.log(m, 2)))
-    #     max_logk = logm // 2
-    #     for logn in range(4, max_logk + 2):
-    #         # m = 2 ** logm
-    #         n = 2 ** logn
-    #         k = n // 2
-    #
-    #         logger.info('m={} n={}'.format(m, n))
-
-
-
-
-    k = 6
-    n = 12
-
-    experiments = (delayed(run)(n, k, m, trial, utils.draw_uniform(m, n)) for m in range(24,65,10) for trial in range(trials))
+    experiments = (delayed(run)((2 ** logk) * 2, (2 ** logk), m, trial, utils.draw_uniform(m, (2 ** logk) * 2)) for m in
+                   range(4, 105, 10) for logk in range(1, int(np.math.log(m, 2))) for
+                   trial in range(trials))
 
     res = Parallel(n_jobs=-1)(experiments)
-
-            # for m in trange(start, end):
-            #     for trial in range(trials):
-            #
-            #
-            #         result_to_append = run(n,k,m,trial)
-            #         res.append(result_to_append)
-
-            # df = pd.DataFrame(data=res,
-            #                   columns=['n', 'k', 'm', 'trial', 'initial_sigmas', 'fractional_makespan', 'clp_makespan',
-            #                            'af_makespan'])
-            #
-            # filename = 'results-n{}-k{}-m{}-t{}.csv'.format(n, k, m, trials)
-            #
-            #
-            # if folder == 's3':
-            #     import boto3
-            #     csv_buffer = BytesIO()
-            #     df.to_csv(csv_buffer, encoding='utf-8')
-            #     s3_resource = boto3.resource('s3')
-            #     s3_resource.Object('borda', filename).put(Body=csv_buffer.getvalue())
-            # else:
-            #     abs_path = os.path.join(folder, filename)
-            #     df.to_csv(abs_path, index=False)
-
-
-
-
-
-# means = np.mean(results,axis=1)
-# stddevs = np.std(results,axis=1)
-# import matplotlib.pyplot as plt
-# plt.errorbar(range(start,end), means, yerr=stddevs)
-# plt.show()

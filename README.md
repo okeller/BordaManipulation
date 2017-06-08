@@ -12,6 +12,7 @@ Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coal
 * glpk
 * tqdm
 * Pandas
+* mock
 * scikit-learn (only for joblib)
 
 ### Running:

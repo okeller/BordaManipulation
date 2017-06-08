@@ -74,6 +74,33 @@ class TestClpRAlphaWcm(unittest.TestCase):
         # result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
         # print(result_to_append)
 
+
+    # @nottest
+    def test_full2(self):
+        initial_sigmas = np.array([10, 12, 12, 12, 14], dtype=np.int32)
+        alpha = np.arange(5)*2  # kind-of-Borda
+        weights = np.array([2, 2])
+        m = len(initial_sigmas)
+
+        assert isinstance(initial_sigmas, np.ndarray)
+        gaps = utils.sigmas_to_gaps(initial_sigmas, np.max(initial_sigmas))
+        logger.info('gaps={}'.format(gaps))
+
+        init_gaps = gaps
+        t1 = current_milli_time()
+        fractional_makespan, clp_res = clp_R_alpha_WCM.find_strategy(initial_sigmas, alpha, weights, mode='per_cand')
+        t2 = current_milli_time()
+
+        logger.warning('Took time {}ms, fractional_makespan={}'.format(t2 - t1, fractional_makespan))
+
+        # fractional_makespan = utils.weighted_makespan(frac_res, alpha, weights, initial_sigmas)
+        clp_makespan = utils.weighted_makespan(clp_res, alpha, weights, initial_sigmas)
+
+        logger.info(
+            'weights={} m={}frac={} CLP={}'.format(weights, m, fractional_makespan, clp_makespan))
+        # result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
+        # print(result_to_append)
+
     # @nottest
     def test_draw_interim_configs(self):
         input = [

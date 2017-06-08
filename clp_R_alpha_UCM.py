@@ -37,7 +37,7 @@ def find_violated_constraints(y, z, targets, alpha, k, mode='one'):
     m = len(z)
     num_item_types = len(z)
 
-    natural_bound = (len(z) - 1) * k
+    natural_bound = alpha[-1] * k
 
     constraints = []
     names = []
@@ -319,8 +319,10 @@ def find_strategy(initial_sigmas, alpha, k, mode='one'):
     for i, weighted_configs in enumerate(x_i_C2val):
         logger.debug('{}: {}'.format(i, weighted_configs))
 
-    frac_config_mat = get_frac_config_mat(x_i_C2val)
-    frac_makespan = utils.makespan(initial_sigmas, frac_config_mat, alpha=alpha)
+    # frac_config_mat = get_frac_config_mat(x_i_C2val)
+    # frac_makespan = utils.makespan(initial_sigmas, frac_config_mat, alpha=alpha)
+
+    frac_makespan = utils.fractional_makespan(initial_sigmas, x_i_C2val, alpha)
     logger.info('fractional makespan is {}'.format(frac_makespan))
 
     sum_votes = np.zeros(m, dtype=np.float32)
@@ -346,13 +348,13 @@ def find_strategy(initial_sigmas, alpha, k, mode='one'):
         # turn the configs to lists of ints
         res = [[int(v) for v in con.split(',')] for con in res]
 
-        frac_config_mat = np.array(res, dtype=np.int32)
+        rounded_config_mat = np.array(res, dtype=np.int32)
         logger.debug('interim configs:')
-        logger.debug(frac_config_mat)
-        histogram = np.sum(frac_config_mat, axis=0)
+        logger.debug(rounded_config_mat)
+        histogram = np.sum(rounded_config_mat, axis=0)
         logger.debug('histogram={}'.format(histogram))
 
-        cur_config_mat = fix_rounding_result(frac_config_mat, alpha, k, initial_sigmas)
+        cur_config_mat = fix_rounding_result(rounded_config_mat, alpha, k, initial_sigmas)
         cur_makespan = utils.makespan(initial_sigmas, cur_config_mat, alpha=alpha)
         result_range.add(cur_makespan)
         if cur_makespan < best_makespan:
@@ -360,4 +362,4 @@ def find_strategy(initial_sigmas, alpha, k, mode='one'):
             best_config_mat = cur_config_mat
     logger.debug("end fixing loops result range {}".format(result_range))
 
-    return frac_config_mat, best_config_mat
+    return frac_makespan, best_config_mat

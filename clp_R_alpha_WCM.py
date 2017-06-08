@@ -39,7 +39,7 @@ def find_violated_constraints(y, z, targets, alpha, weights, mode='one'):
     num_item_types = len(alpha)
     num_mani = len(weights)
 
-    natural_bound = np.max(alpha) * np.sum(weights)
+    natural_bound = alpha[-1] * np.sum(weights)
 
     constraints = []
     names = []
@@ -284,11 +284,10 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
         raise ValueError('weights should contain integers.')
 
     m = len(initial_sigmas)
-    k = len(weights)
-
+    # k = len(weights)
 
     initial_sigmas_sorted = np.sort(initial_sigmas)[::-1]
-    lower_bounds = np.array([alpha[:i].mean() * k + initial_sigmas_sorted[:i].mean()  for i in range(1,m+1)], dtype=np.int32)
+    lower_bounds = np.array([alpha[:i].mean() * weights.sum() + initial_sigmas_sorted[:i].mean()  for i in range(1,m+1)], dtype=np.int32)
 
 
     lo = np.max(lower_bounds)
@@ -307,7 +306,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
         hi = hi + interval_size
         interval_size *= 2
         logger.warning('target={}'.format(hi))
-        x_i_C2val = lp_solve(m, k, initial_sigmas, hi, mode=mode)
+        x_i_C2val = lp_solve(m, alpha, weights, initial_sigmas, hi, mode=mode)
 
     # then find target by two-sided binary search
     # lo, hi = last_hi, hi
@@ -318,7 +317,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
 
         mid = (lo + hi) // 2
         logger.warning('mid={}'.format(mid))
-        x_i_C2val = lp_solve(m, k, initial_sigmas, mid, mode=mode)
+        x_i_C2val = lp_solve(m, alpha, weights, initial_sigmas, mid, mode=mode)
         if x_i_C2val == lp_solver.UNBOUNDED:
             lo = mid + 1
         else:
@@ -337,9 +336,8 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
     for i, weighted_configs in enumerate(x_i_C2val):
         logger.debug('{}: {}'.format(i, weighted_configs))
 
-    # illegal_manip_matrix = get_frac_config_mat(x_i_C2val)
 
-    frac_makespan = utils.fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights)
+    frac_makespan = utils.weighted_fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights)
     logger.info('fractional makespan is {}'.format(frac_makespan))
 
     sum_votes = np.zeros(m, dtype=np.float32)

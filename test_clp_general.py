@@ -54,12 +54,12 @@ class TestClpGeneral(unittest.TestCase):
 
         init_gaps = gaps
         t1 = current_milli_time()
-        frac_res, clp_res = clp_general.find_strategy(initial_sigmas, k, mode='per_cand')
+        fractional_makespan, clp_res = clp_general.find_strategy(initial_sigmas, k, mode='per_cand')
         t2 = current_milli_time()
 
-        logger.warning('Took time {}ms, frac_res={}'.format(t2 - t1, frac_res))
+        logger.warning('Took time {}ms, fractional_makespan={}'.format(t2 - t1, fractional_makespan))
 
-        fractional_makespan = utils.makespan(initial_sigmas, frac_res)
+        # fractional_makespan = utils.makespan(initial_sigmas, frac_res)
         clp_makespan = utils.makespan(initial_sigmas, clp_res
                                       )
         gaps = utils.sigmas_to_gaps(initial_sigmas, clp_makespan)

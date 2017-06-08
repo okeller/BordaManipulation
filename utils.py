@@ -62,7 +62,6 @@ def calculate_awarded(config_mat, initial_sigmas=None, alpha=None):
     if alpha is None:
         alpha = np.arange(m)
 
-
     awarded = np.zeros(m, dtype=float)
 
     if initial_sigmas is not None:
@@ -95,7 +94,28 @@ def weighted_calculate_awarded(config_mat, alpha, weights, initial_sigmas=None):
     return scores
 
 
-def fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights):
+def fractional_makespan(initial_sigmas, x_i_C2val, alpha=None):
+
+
+    m = len(initial_sigmas)
+    if alpha is None:
+        alpha = np.arange(m)  # Borda
+    assert len(initial_sigmas) == len(alpha)
+
+    scores = np.zeros(len(initial_sigmas), dtype=float)
+
+    scores += initial_sigmas
+
+    for cand, weighted_configs in enumerate(x_i_C2val):
+        for con_str, prob in weighted_configs:
+            config = np.array([int(v) for v in con_str.split(',')], dtype=np.int32)
+
+            scores[cand] += np.dot(config, alpha) * prob
+
+    return np.max(scores)
+
+
+def weighted_fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights):
     assert len(initial_sigmas) == len(alpha)
     scores = np.zeros(len(initial_sigmas), dtype=float)
 
