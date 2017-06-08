@@ -256,9 +256,7 @@ def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.000001):
                     non_pruned_constraints.append(c)
                     non_pruned_names.append(n)
                 else:
-                    xxxxx = 1
-                    pass
-                    # non_pruned_constraints.append(c)
+                    raise ValueError()                   # non_pruned_constraints.append(c)
                     # non_pruned_names.append(n)
             logger.info('pruned {} constraints'.format(len(non_trivial_constraints) - len(non_pruned_constraints)))
             non_trivial_constraints = non_pruned_constraints
