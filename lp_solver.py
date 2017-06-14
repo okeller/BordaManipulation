@@ -23,13 +23,23 @@ class HomogenicLpSolver(object):
     """
 
     def __init__(self, A, c, var_names=None, const_names=None):
-        if var_names != None and len(var_names) != A.shape[1]:
+        if var_names is not None and len(var_names) != A.shape[1]:
             raise ValueError("len(var_names) != A.shape[1]")
-        if const_names != None and len(const_names) != A.shape[0]:
+        if const_names is not None and len(const_names) != A.shape[0]:
             raise ValueError("len(const_names) != A.shape[0]")
 
+        if var_names is not None and len(set(var_names)) < len(var_names):
+            raise ValueError("len(np.unique(var_names)) < len(var_names)")
+
+        if const_names is not None and len(set(const_names)) < len(const_names):
+            raise ValueError("len(np.unique(const_names)) < len(const_names)")
+
         self.var_names = var_names
+        self.var_name2index = {n: i for i, n in enumerate(var_names)}
+
         self.const_names = const_names
+        self.const_name2index = {n: i for i, n in enumerate(const_names)}
+
         self.A = A
         self.b = np.zeros(A.shape[0], dtype=float)
         self.c = c
@@ -74,10 +84,10 @@ class HomogenicLpSolver(object):
     def __getitem__(self, item):
 
         if self.var_names is not None and item in self.var_names:
-            i = self.var_names.index(item)
+            i = self.var_name2index[item]
             return self._x[i]
         elif self.const_names is not None and item in self.const_names:
-            i = self.const_names.index(item)
+            i = self.const_name2index[item]
             if i < len(self._z):
                 return self._z[i]
             else:
@@ -102,6 +112,9 @@ if __name__ == '__main__':
     const_names = ['c_{}'.format(i) for i in range(A.shape[0])]
     solv = HomogenicLpSolver(A, c, var_names=var_names, const_names=const_names)
     solv.solve()
+
+    for i,n in enumerate(var_names):
+        assert solv.x[i] == solv[n]
 
     print([(v, solv[v]) for v in var_names])
     print([(c, solv[c]) for c in const_names])

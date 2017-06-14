@@ -19,7 +19,7 @@ class TestReverseAlgorithm(unittest.TestCase):
         k = len(weights)
         m = len(initial_sigmas)
 
-        alpha = np.arange(m)  # borda
+        alpha = utils.borda(m)
 
         res = reverse_algorithm.find_strategy(initial_sigmas, alpha, weights)
 

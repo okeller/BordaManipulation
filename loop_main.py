@@ -28,7 +28,7 @@ trials = 20
 
 
 folder = 'sss3'
-if not os.path.exists(folder):
+if folder and not os.path.exists(folder):
     os.makedirs(folder)
 
 

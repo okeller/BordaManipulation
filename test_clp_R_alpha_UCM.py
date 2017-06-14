@@ -9,6 +9,7 @@ from mock import mock
 from mock.mock import MagicMock
 from nose.tools.nontrivial import nottest
 
+
 import average_fit
 
 import clp_R_alpha_UCM
@@ -75,7 +76,7 @@ class TestClpRAlphaUcm(unittest.TestCase):
         k = 2
         m = len(initial_sigmas)
 
-        alpha = np.arange(m)  # borda
+        alpha = utils.borda(m)  # borda
 
         assert isinstance(initial_sigmas, np.ndarray)
         gaps = utils.sigmas_to_gaps(initial_sigmas, np.max(initial_sigmas))
@@ -170,11 +171,11 @@ class TestClpRAlphaUcm(unittest.TestCase):
 
         initial_sigmas = np.array([0, 1, 1])
         weights = np.array([1, 1])
-        alpha = np.arange(m)  # borda
+        alpha = utils.borda(m)  # borda
 
         res_config_mat = clp_R_alpha_UCM.fix_rounding_result(config_mat, alpha, k, initial_sigmas)
 
-        self.assertEquals(np.ravel(res_config_mat).tolist(), [1, 1, 0, 0, 0, 2, 1, 1, 0])
+        self.assertListEqual(np.ravel(res_config_mat).tolist(), [1, 1, 0, 0, 1, 1, 1, 0, 1])
 
 
 if __name__ == '__main__':

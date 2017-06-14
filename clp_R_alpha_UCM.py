@@ -129,10 +129,10 @@ def lp_solve_by_gaps(m, alpha, k, gaps, mode='one', tol=0.000001):
     if mode not in ['one', 'per_cand', 'per_cand_prune']:
         raise ValueError("mode not in ['one', 'per_cand', 'per_cand_prune']")
 
-
     A_trivial = -np.eye(2 * m, dtype=float)
     non_trivial_constraints = []
     non_trivial_const_names = []
+    const_names_set = set()
 
     c = np.array(([1] * m) + ([-k] * m), dtype=float)
 
@@ -151,8 +151,15 @@ def lp_solve_by_gaps(m, alpha, k, gaps, mode='one', tol=0.000001):
 
         logger.info('Adding {} constraints'.format(len(new_constraints)))
 
-        non_trivial_constraints += new_constraints
-        non_trivial_const_names += new_constraints_names
+        # an existing constraint might be sometimes added
+        for constraint, constraint_name in zip(new_constraints, new_constraints_names):
+             if constraint_name not in const_names_set:
+                non_trivial_constraints.append(constraint)
+                non_trivial_const_names.append(constraint_name)
+                const_names_set.add(constraint_name)
+
+        # non_trivial_constraints += new_constraints
+        # non_trivial_const_names += new_constraints_names
 
         A = np.vstack([A_trivial] + non_trivial_constraints)
         const_names = triv_const_names + non_trivial_const_names
@@ -169,15 +176,13 @@ def lp_solve_by_gaps(m, alpha, k, gaps, mode='one', tol=0.000001):
         if mode == 'per_cand_prune' and lp.status != lp_solver.UNBOUNDED:
             non_pruned_constraints = []
             non_pruned_names = []
-            for c, n in zip(non_trivial_constraints, non_trivial_const_names):
-                if lp[n] is not None and lp[n] > tol:
-                    non_pruned_constraints.append(c)
-                    non_pruned_names.append(n)
+            for constraint, constraint_name in zip(non_trivial_constraints, non_trivial_const_names):
+                if lp[constraint_name] is not None and lp[constraint_name] > tol:
+                # if lp[constraint_name] > tol:
+                    non_pruned_constraints.append(constraint)
+                    non_pruned_names.append(constraint_name)
                 else:
-                    xxxxx = 1
-                    pass
-                    # non_pruned_constraints.append(c)
-                    # non_pruned_names.append(n)
+                    raise ValueError()
             logger.info('pruned {} constraints'.format(len(non_trivial_constraints) - len(non_pruned_constraints)))
             non_trivial_constraints = non_pruned_constraints
             non_trivial_const_names = non_pruned_names
@@ -197,9 +202,9 @@ def lp_solve_by_gaps(m, alpha, k, gaps, mode='one', tol=0.000001):
         return status
     logger.info('{} {}'.format(y, z))
     x_i_C2val = [[] for _ in range(m)]
-    for c, n in zip(non_trivial_constraints, non_trivial_const_names):
-        _, i, subset_str = n
-        x_i_C2val[i].append((subset_str, lp[n]))
+    for constraint, constraint_name in zip(non_trivial_constraints, non_trivial_const_names):
+        _, i, configuration = constraint_name
+        x_i_C2val[i].append((configuration, lp[constraint_name]))
     return x_i_C2val
 
 
@@ -216,7 +221,7 @@ def fix_rounding_result(config_mat, alpha, k, initial_sigmas):
     awarded = utils.calculate_awarded(config_mat, initial_sigmas, alpha=alpha)
 
     tuples = list(enumerate(awarded))
-    tuples.sort(key=lambda t: t[1])
+    tuples = sorted(tuples, key=lambda t: t[1], reverse=True)
     candidate_order, _ = zip(*tuples)
 
     events = []

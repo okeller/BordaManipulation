@@ -17,7 +17,33 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
+def borda(m):
+    return np.arange(m)
+
+def draw_weights(k, rand=None):
+    """
+
+    Args:
+        k (int):
+        rand (numpy.random.mtrand.RandomState):
+
+    Returns:
+
+    """
+    return rand.randint(1, 3, k, dtype=int) if rand else np.random.randint(1, 3, k, dtype=int)
+
+
 def draw_uniform(m, n, rand=None):
+    """
+
+    Args:
+        m (int)
+        n (int:
+        rand (Optional [Union[ numpy.random.mtrand.RandomState, None]]):
+
+    Returns:
+
+    """
     rankings = draw_uniform_rankings(m, n, rand)
     return rankings_to_initial_sigmas(rankings)
 
@@ -25,7 +51,13 @@ def draw_uniform(m, n, rand=None):
 def draw_uniform_rankings(m, n, rand=None):
     """
 
-    :type rand: np.random.RandomState
+    Args:
+       m (int)
+       n (int:
+       rand (numpy.random.mtrand.RandomState):
+
+    Returns:
+
     """
     res = []
     for i in range(n):
@@ -60,7 +92,7 @@ def calculate_awarded(config_mat, initial_sigmas=None, alpha=None):
     m = config_mat.shape[0]
 
     if alpha is None:
-        alpha = np.arange(m)
+        alpha = borda(m)
 
     awarded = np.zeros(m, dtype=float)
 
@@ -95,11 +127,9 @@ def weighted_calculate_awarded(config_mat, alpha, weights, initial_sigmas=None):
 
 
 def fractional_makespan(initial_sigmas, x_i_C2val, alpha=None):
-
-
     m = len(initial_sigmas)
     if alpha is None:
-        alpha = np.arange(m)  # Borda
+        alpha = borda(m)  # Borda
     assert len(initial_sigmas) == len(alpha)
 
     scores = np.zeros(len(initial_sigmas), dtype=float)

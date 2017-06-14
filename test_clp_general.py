@@ -10,7 +10,7 @@ from nose.tools.nontrivial import nottest
 import average_fit
 
 import clp_general
-import lp_solver
+
 import utils
 
 solvers.options['show_progress'] = False
@@ -83,19 +83,18 @@ class TestClpGeneral(unittest.TestCase):
         self.assertTrue(output[1].startswith(u'config_B'))
 
     # @nottest
-    def test_fix_rounding_result_weighted(self):
+    def test_fix_rounding_result(self):
         k = 2
         m = 3
 
         config_mat = np.array([[1, 1, 0], [0, 0, 2], [1, 0, 1]])
 
         initial_sigmas = np.array([0, 1, 1])
-        weights = np.array([1, 1])
-        alpha = np.arange(m)  # borda
+
 
         res_config_mat = clp_general.fix_rounding_result(config_mat, k, initial_sigmas)
 
-        self.assertEquals(np.ravel(res_config_mat).tolist(), [1, 1, 0, 0, 0, 2, 1, 1, 0])
+        self.assertListEqual(np.ravel(res_config_mat).tolist(), [1, 1, 0, 0, 1, 1, 1, 0, 1])
 
 
 if __name__ == '__main__':

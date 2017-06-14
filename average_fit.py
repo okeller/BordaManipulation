@@ -37,7 +37,7 @@ def solve_one_gaps(k, init_gaps, verbose=False):
         cand = np.argmax(potential)
 
         # choose which score to give
-        does_fit = np.arange(m) <= gaps[cand]
+        does_fit = utils.borda(m) <= gaps[cand]
         still_left = score2mult > 0
         does_fit_and_still_left = np.logical_and(does_fit, still_left)
         score_to_give = None

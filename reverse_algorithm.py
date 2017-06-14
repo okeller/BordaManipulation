@@ -1,5 +1,5 @@
 import numpy as np
-
+import utils
 
 
 def find_strategy(initial_sigmas, alpha, weights):
@@ -16,7 +16,7 @@ def find_strategy(initial_sigmas, alpha, weights):
     for ell in range(k):
 
         # now sort the candidates according to the current awarded score, high to low:
-        candidates_sorted = sorted(np.arange(m), key=lambda i: current_awarded[i], reverse=True)
+        candidates_sorted = sorted(utils.borda(m), key=lambda i: current_awarded[i], reverse=True)
         # now achieve inverse-sort: every candidate gets his rank (high-to-low) in sort
         ballot = np.zeros(m, dtype=int)
         for rank, cand in enumerate(candidates_sorted):

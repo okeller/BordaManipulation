@@ -10,6 +10,8 @@ from nose.tools.nontrivial import nottest
 import average_fit
 
 import clp_R_alpha_WCM
+
+clp_R_alpha_WCM.DEBUG_MODE = True
 import lp_solver
 import utils
 
@@ -51,7 +53,7 @@ class TestClpRAlphaWcm(unittest.TestCase):
     # @nottest
     def test_full(self):
         initial_sigmas = np.array([5, 6, 6, 6, 7], dtype=np.int32)
-        alpha = np.arange(5)  # Borda
+        alpha = utils.borda(5)  # Borda
         weights = np.array([1, 1])
         m = len(initial_sigmas)
 
@@ -61,24 +63,25 @@ class TestClpRAlphaWcm(unittest.TestCase):
 
         init_gaps = gaps
         t1 = current_milli_time()
-        frac_res, clp_res = clp_R_alpha_WCM.find_strategy(initial_sigmas, alpha, weights, mode='per_cand')
+        fractional_makespan, clp_res = clp_R_alpha_WCM.find_strategy(initial_sigmas, alpha, weights, mode='per_cand')
         t2 = current_milli_time()
 
-        logger.warning('Took time {}ms, frac_res={}'.format(t2 - t1, frac_res))
+        logger.warning('Took time {}ms, frac_res={}'.format(t2 - t1, fractional_makespan))
 
-        fractional_makespan = utils.weighted_makespan(frac_res, alpha, weights, initial_sigmas)
         clp_makespan = utils.weighted_makespan(clp_res, alpha, weights, initial_sigmas)
 
         logger.info(
             'weights={} m={}frac={} CLP={}'.format(weights, m, fractional_makespan, clp_makespan))
+
+        tol = 0.001
+        self.assertLessEqual(fractional_makespan, clp_makespan + tol)
         # result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
         # print(result_to_append)
-
 
     # @nottest
     def test_full2(self):
         initial_sigmas = np.array([10, 12, 12, 12, 14], dtype=np.int32)
-        alpha = np.arange(5)*2  # kind-of-Borda
+        alpha = utils.borda(5) * 2  # kind-of-Borda
         weights = np.array([2, 2])
         m = len(initial_sigmas)
 
@@ -98,8 +101,50 @@ class TestClpRAlphaWcm(unittest.TestCase):
 
         logger.info(
             'weights={} m={}frac={} CLP={}'.format(weights, m, fractional_makespan, clp_makespan))
+        self.assertLessEqual(fractional_makespan, clp_makespan)
+
         # result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
         # print(result_to_append)
+
+    def test_full3(self):
+        initial_sigmas = np.array([4, 6, 6, 8], dtype=np.int32)
+        alpha = utils.borda(4)  # Borda
+        weights = np.array([2, 2])
+        m = len(initial_sigmas)
+
+        assert isinstance(initial_sigmas, np.ndarray)
+        gaps = utils.sigmas_to_gaps(initial_sigmas, np.max(initial_sigmas))
+        logger.info('gaps={}'.format(gaps))
+
+        init_gaps = gaps
+        t1 = current_milli_time()
+        fractional_makespan, clp_res = clp_R_alpha_WCM.find_strategy(initial_sigmas, alpha, weights, mode='per_cand')
+        t2 = current_milli_time()
+
+        logger.warning('Took time {}ms, fractional_makespan={}'.format(t2 - t1, fractional_makespan))
+
+        # fractional_makespan = utils.weighted_makespan(frac_res, alpha, weights, initial_sigmas)
+        clp_makespan = utils.weighted_makespan(clp_res, alpha, weights, initial_sigmas)
+
+        logger.info(
+            'weights={} m={}frac={} CLP={}'.format(weights, m, fractional_makespan, clp_makespan))
+
+        tol = 0.001
+        self.assertLessEqual(fractional_makespan, clp_makespan + tol)
+        # result_to_append = [n, k, m, trial, initial_sigmas, fractional_makespan, clp_makespan, af_makespan]
+        # print(result_to_append)
+
+    def test_lp_solve(self):
+        initial_sigmas = np.array([4, 6, 6, 8], dtype=np.int32)
+        alpha = utils.borda(4)  # Borda
+        weights = np.array([2, 2])
+        m = len(initial_sigmas)
+        target = 12
+        result = clp_R_alpha_WCM.lp_solve(m, alpha, weights, initial_sigmas, target)
+
+        tol = 0.001
+        makespan = utils.weighted_fractional_makespan(initial_sigmas, result, alpha, weights)
+        self.assertLessEqual(makespan, target + tol)
 
     # @nottest
     def test_draw_interim_configs(self):
@@ -121,11 +166,11 @@ class TestClpRAlphaWcm(unittest.TestCase):
 
         initial_sigmas = np.array([0, 1, 1])
         weights = np.array([1, 1])
-        alpha = np.arange(m)  # borda
+        alpha = utils.borda(m)  # borda
 
         res_config_mat = clp_R_alpha_WCM.fix_rounding_result_weighted(config_mat, alpha, weights, initial_sigmas)
 
-        self.assertEquals(np.ravel(res_config_mat).tolist(), [0, 1, 2, 2, 1, 0])
+        self.assertListEqual(np.ravel(res_config_mat).tolist(), [0, 1, 1, 2, 2, 0])
 
 
 if __name__ == '__main__':
