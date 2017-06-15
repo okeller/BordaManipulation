@@ -75,7 +75,7 @@ def run(n, alpha, weights, m, trial, initial_sigmas):
 if __name__ == '__main__':
     experiments = (delayed(run)(k * 2, utils.borda(m), utils.draw_weights(k), m, trial, utils.draw_uniform(m, k * 2))
                    for m in
-                   range(4, 5, 10) for k in [2, 4] for
+                   range(4, 65, 10) for k in [2, 4, 6] for
                    trial in range(trials))
 
-    res = Parallel(n_jobs=1)(experiments)
+    res = Parallel(n_jobs=-1)(experiments)

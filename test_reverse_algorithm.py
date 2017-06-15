@@ -23,7 +23,9 @@ class TestReverseAlgorithm(unittest.TestCase):
 
         res = reverse_algorithm.find_strategy(initial_sigmas, alpha, weights)
 
-        self.assertEquals(np.ravel(res).tolist(), [4, 0, 1, 3, 2, 2, 3, 1, 0, 4])
+        self.assertListEqual(np.ravel(res).tolist(), [4, 0, 1, 3, 2, 2, 3, 1, 0, 4])
+
+
 
         # rray([[4, 0],
         #       [1, 3],

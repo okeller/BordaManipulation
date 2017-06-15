@@ -356,6 +356,7 @@ def find_strategy(initial_sigmas, alpha, weights, mode='one'):
         logger.debug('{}: {}'.format(i, weighted_configs))
 
     frac_makespan = utils.weighted_fractional_makespan(initial_sigmas, x_i_C2val, alpha, weights)
+    assert frac_makespan <= hi + 0.001
     logger.info('fractional makespan is {}'.format(frac_makespan))
 
     sum_votes = np.zeros(m, dtype=np.float32)
