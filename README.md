@@ -30,16 +30,13 @@ logger = logging.getLogger(__name__)
 import clp_general
 import utils
 
-
+# Creating the input:
 initial_sigmas = np.array([5, 6, 6, 6, 7], dtype=np.int32)
 k = 2
 m = len(initial_sigmas)
 
-gaps = utils.sigmas_to_gaps(initial_sigmas, np.max(initial_sigmas))
-logger.info('gaps={}'.format(gaps))
-
+# Running the algorithm:
 fractional_makespan, clp_res = clp_general.find_strategy(initial_sigmas, k, mode='per_cand')
-
 clp_makespan = utils.makespan(initial_sigmas, clp_res)
 
 logger.info(
@@ -48,5 +45,5 @@ logger.info(
 
 Final output should be in the form of:
 ```
-2017-06-21 15:03:12,950 : INFO : k=2 m=5 frac=10.000000041600458 CLP=10.0
+2017-XX-XX XX:XX:XX,XXX : INFO : k=2 m=5 frac=10.000000041600458 CLP=10.0
 ```
