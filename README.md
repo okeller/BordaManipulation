@@ -19,7 +19,7 @@ This repository contains the code for several works, dealing with approximations
 
 ## Running:
 
-For **$\mathcal{R}_{\vec{\alpha}}$-WCM**, using the algorithm in (*), follow this example:
+For **General-WCM**, using the algorithm in (*), follow this example:
 
 
 ```python
@@ -54,7 +54,7 @@ logger.info(
     20XX-XX-XX XX:XX:XX,XXX : INFO : frac=26.000000011278484 CLP=26.0
     
 
-For **$\mathcal{R}_{\vec{\alpha}}$-UCM**, using the algorithm in (*), follow this example:
+For **General-UCM**, using the algorithm in (*), follow this example:
 
 
 ```python
