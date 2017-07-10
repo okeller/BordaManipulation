@@ -2,8 +2,8 @@
 # New Approximations for Coalitional Manipulation in General Scoring Rules
 This repository contains the code for several works, dealing with approximations for the problem of coalitional manipulation under different scoring rules:
 
-* Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximations for Coalitional Manipulation in General Scoring Rules**, manuscript ($\star$).
-* Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coalitional Manipulation**. AAMAS 2017: 606-614 ($\dagger$). 
+* Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximations for Coalitional Manipulation in General Scoring Rules**, manuscript (*).
+* Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coalitional Manipulation**. AAMAS 2017: 606-614 (^). 
 * Other work currently in progress.
 
 ## Requirements:
@@ -19,7 +19,7 @@ This repository contains the code for several works, dealing with approximations
 
 ## Running:
 
-For **$\mathcal{R}_{\vec{\alpha}}$-WCM**, using the algorithm in ($\star$), follow this example:
+For **$\mathcal{R}_{\vec{\alpha}}$-WCM**, using the algorithm in (*), follow this example:
 
 
 ```python
@@ -54,7 +54,7 @@ logger.info(
     20XX-XX-XX XX:XX:XX,XXX : INFO : frac=26.000000011278484 CLP=26.0
     
 
-For **$\mathcal{R}_{\vec{\alpha}}$-UCM**, using the algorithm in ($\star$), follow this example:
+For **$\mathcal{R}_{\vec{\alpha}}$-UCM**, using the algorithm in (*), follow this example:
 
 
 ```python
@@ -87,7 +87,7 @@ logger.info(
     20XX-XX-XX XX:XX:XX,XXX : INFO : frac=20.000000083200916 CLP=20.0
     
 
-For the specific case of **Borda-UCM**, using the algorithm in ($\dagger$), follow this example:  
+For the specific case of **Borda-UCM**, using the algorithm in (^), follow this example:  
 
 
 ```python
