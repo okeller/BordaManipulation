@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 # k = 4
 # n = 8
 #
-trials = 20
+trials = 1
 # start = 4
 # end = 10
 
 
-folder = 'sss3'
+folder = 'sss3_revision'
 if folder and not os.path.exists(folder):
     os.makedirs(folder)
 
@@ -70,7 +70,16 @@ def run(n, k, m, trial, initial_sigmas):
 
 if __name__ == '__main__':
     experiments = (delayed(run)((2 ** logk) * 2, (2 ** logk), m, trial, utils.draw_uniform(m, (2 ** logk) * 2)) for m in
-                   range(4, 105, 10) for logk in range(1, int(np.math.log(m, 2))) for
-                   trial in range(trials))
+                   range(104, 105, 10) for logk in [3] for trial in range(trials))
+    # range(1, int(np.math.log(m, 2))) for
+    # trial in range(trials))
 
-    res = Parallel(n_jobs=-1)(experiments)
+    argses = (((2 ** logk) * 2, (2 ** logk), m, trial, utils.draw_uniform(m, (2 ** logk) * 2))
+              for m in
+              range(104, 105, 10)
+              for logk in [3] for trial in range(trials))
+
+    for args in argses:
+        run(*args)
+
+    # res = Parallel(n_jobs=1)(experiments)

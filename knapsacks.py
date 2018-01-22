@@ -76,6 +76,8 @@ def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.00
 
     assert len(values) == len(weights)
 
+    weights = np.array(weights)
+
     num_types = len(values)
 
     mat = np.zeros((weight_bound + 1, k + 1), dtype=np.float32)
@@ -105,6 +107,72 @@ def k_multiset_knapsack(values, weights, k, target_value, weight_bound, tol=0.00
         return subset
     else:
         return None
+
+
+
+def k_multiset_knapsack_numpy(values, weights, k, target_value, weight_bound, tol=0.001):
+    """
+    Solves an instance of the k-multiset knapsack
+    Args:
+        values (List[float]): a vector of item values
+        weights (List[int]): a vector of item weights
+        k (int): the size of the resulting multiset
+        target_value (float): a lower bound on resulting subset value
+        weight_bound (int): an upper bound on resulting subset weight
+        tol (float): a tolerance parameter
+
+    Returns:
+        List[int]: A multiset of items of size `k` represented as an list containing the histogram of score types.
+
+    """
+
+    assert len(values) == len(weights)
+
+    weights = np.array(weights)
+
+
+    mat = np.empty((weight_bound + 1, k + 1), dtype=np.float32)
+    mat.fill( -sys.maxsize)
+    mat[:, 0] = 0
+
+    last_taken = np.empty((weight_bound + 1, k + 1), dtype=np.int)
+    last_taken.fill(-1)
+
+    # last_taken = [[-1] * (k + 1) for w in range(weight_bound + 1)]
+
+
+    # mat[:, 0] = 0  # init table - we always don't want to take the dummy item
+    for w in range(weight_bound + 1):
+        for ell in range(1,k + 1):
+
+            # for item in range(0, num_types):
+            #     if w - weights[item] >= 0:  # if item is relevant, i.e., can be at all taken
+            #         if values[item] + mat[w - weights[item], ell - 1] > mat[w, ell]:  # if it given better value
+            #             mat[w, ell] = values[item] + mat[w - weights[item], ell - 1]
+            #             last_taken[w][ell] = item
+
+            ok_items = w-weights >= 0
+            pseudo_weights = np.where(ok_items, weights, 0)
+
+            if np.any(ok_items):
+                options_per_item = np.where(ok_items,  values + mat[w - pseudo_weights, ell - 1] ,  -sys.maxsize  )
+                item_taken = np.argmax(options_per_item)
+                mat[w, ell] = options_per_item[item_taken]
+                last_taken[w, ell] = item_taken
+
+
+
+    best_val = mat[weight_bound, k]
+
+    if best_val > target_value + tol:
+        logger.debug('best val: {} target: {}'.format(best_val, target_value))
+        subset = backtrack(last_taken, weight_bound, k, weights)
+        # assert best_val - tol < sum(values[item] for item in subset) < best_val + tol
+        assert isinstance(subset, list)
+        return subset
+    else:
+        return None
+
 
 
 def k_sequnce_knapsack(values, item_weights, penalties, target_value, weight_bound, tol=0.001):

@@ -24,6 +24,19 @@ class TestKMultisetKnapsack(unittest.TestCase):
         self.assertGreater(values[res].sum(), target_value)  # value greater than target_value
         self.assertLessEqual(weights[res].sum(), weight_bound)  # weight less than or equal weight_bound
 
+    def test_k_multiset_knapsack_numpy(self):
+        values = np.array([1, 2, 3, 4.1, 5])
+        weights = np.array([10, 2, 10, 7, 10])
+        target_value = 6.01
+        weight_bound = 9  # should be int
+        res = knapsacks.k_multiset_knapsack_numpy(values=values, weights=weights, k=2, target_value=target_value,
+                                            weight_bound=weight_bound)
+
+        logger.info('res={}'.format(res))
+        self.assertListEqual(res, [1, 3])
+        self.assertGreater(values[res].sum(), target_value)  # value greater than target_value
+        self.assertLessEqual(weights[res].sum(), weight_bound)  # weight less than or equal weight_bound
+
     def test_k_sequence_knapsack(self):
         values = np.array([[1, 2, 3, 4.1, 5], [1, 2, 3, 4.1, 5]]).transpose()
         item_weights = np.array([10, 2, 10, 7, 10])

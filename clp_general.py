@@ -14,7 +14,7 @@ from cvxopt.modeling import sum
 import lp_solver
 import utils
 
-from knapsacks import k_multiset_knapsack
+from knapsacks import k_multiset_knapsack_numpy
 logger = logging.getLogger(__name__)
 
 
@@ -129,7 +129,7 @@ def find_violated_constraints(y, z, targets, k, mode='one'):
     names = []
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
-        multiset = k_multiset_knapsack(values=z, weights=range(num_item_types), k=k,
+        multiset = k_multiset_knapsack_numpy(values=z, weights=range(num_item_types), k=k,
                                      target_value=y[i],
                                      weight_bound=min(targets[i], natural_bound))
 
@@ -196,7 +196,8 @@ def lp_solve(m, k, sigmas, target, mode='one'):
     Returns:
 
     """
-    gaps = [target - sigma for sigma in sigmas]
+    # gaps = [target - sigma for sigma in sigmas]
+    gaps = target - sigmas
     return lp_solve_by_gaps(m, k, gaps, mode=mode)
 
 
@@ -223,13 +224,17 @@ def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.000001):
     triv_const_names = [('trivial', kk, v) for kk, v in var_names]
 
     lp = lp_solver.HomogenicLpSolver(A_trivial, c, var_names=var_names, const_names=triv_const_names)
+    logger.info('Solving...')
     lp.solve()
+    logger.info('solved.')
 
     res = lp.x
     y = res[:m]
     z = res[m:]
 
+    logger.info("finding constraints...")
     new_constraints, new_constraints_names = find_violated_constraints(y, z, gaps, k, mode=mode)
+    logger.info("Found")
     while len(new_constraints) > 0:
 
         logger.info('Adding {} constraints'.format(len(new_constraints)))
@@ -248,7 +253,9 @@ def lp_solve_by_gaps(m, k, gaps, mode='one', tol=0.000001):
         const_names = triv_const_names + non_trivial_const_names
 
         lp = lp_solver.HomogenicLpSolver(A, c, var_names=var_names, const_names=const_names)
+        logger.info('Solving...')
         lp.solve()
+        logger.info('solved.')
 
         res = lp.x
         y = res[:m]
@@ -359,7 +366,7 @@ def find_strategy(initial_sigmas, k, mode='one'):
     #     lo = np.max(initial_sigmas)
 
     initial_sigmas_sorted = np.sort(initial_sigmas)[::-1]
-    lower_bounds = [int(float(i-1)/2 * k + initial_sigmas_sorted[:i].mean())  for i in range(1,m+1)]
+    lower_bounds = np.array([int(float(i-1)/2 * k + initial_sigmas_sorted[:i].mean())  for i in range(1,m+1)])
 
     lo = np.max(lower_bounds)
 
