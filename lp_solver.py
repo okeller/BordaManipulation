@@ -14,7 +14,8 @@ import platform
 if platform.system() == 'Windows':
     solver = None  # CVXOPT's conelp
 else:
-    solver = 'glpk'
+    # solver = 'glpk'
+    solver = None
 
 
 class HomogenicLpSolver(object):
@@ -41,7 +42,7 @@ class HomogenicLpSolver(object):
         self.const_name2index = {n: i for i, n in enumerate(const_names)}
 
         self.A = A
-        self.b = np.zeros(A.shape[0], dtype=float)
+        self.b = np.zeros(A.shape[0], dtype=np.float)
         self.c = c
 
     def solve(self):

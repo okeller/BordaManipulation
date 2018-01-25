@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 # k = 4
 # n = 8
 #
-trials = 100
+trials = 1
 # start = 4
 # end = 10
 
 
-folder = None
+folder = 'test_results'
 if folder and not os.path.exists(folder):
     os.makedirs(folder)
 
@@ -69,15 +69,11 @@ def run(n, k, m, trial, initial_sigmas):
 
 
 if __name__ == '__main__':
-    experiments = (delayed(run)(k * 2, k, m, trial, utils.draw_uniform(m, k * 2)) for m in
-                   range(80, 110, 10) for k in [2, 4, 6, 8] for trial in range(trials))
 
-    #    argses = (((2 ** logk) * 2, (2 ** logk), m, trial, utils.draw_uniform(m, (2 ** logk) * 2))
-    #             for m in
-    #            range(32, 33, 10)
-    #           for logk in [3] for trial in range(trials))
+    argses = (((2 ** logk) * 2, (2 ** logk), m, trial, utils.draw_uniform(m, (2 ** logk) * 2))
+              for m in
+              range(32, 33, 10)
+              for logk in [3] for trial in range(trials))
 
-    #    for args in argses:
-    #        run(*args)
-
-    res = Parallel(n_jobs=-1)(experiments)
+    for args in argses:
+        run(*args)

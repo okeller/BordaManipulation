@@ -14,7 +14,7 @@ from cvxopt.modeling import sum
 import lp_solver
 import utils
 
-from knapsacks import k_multiset_knapsack_numpy
+from cy_knapsacks import k_multiset_knapsack
 logger = logging.getLogger(__name__)
 
 
@@ -129,7 +129,7 @@ def find_violated_constraints(y, z, targets, k, mode='one'):
     names = []
     for i in range(len(targets)):
         # a violated constraint is such that y[i]>sum_of_subset_of(z_j's) while sum_of_subset_of(votes)<targets[i]
-        multiset = k_multiset_knapsack_numpy(values=z, weights=range(num_item_types), k=k,
+        multiset = k_multiset_knapsack(values=z, weights=np.arange(num_item_types, dtype=np.int), k=k,
                                      target_value=y[i],
                                      weight_bound=min(targets[i], natural_bound))
 

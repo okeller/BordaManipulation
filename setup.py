@@ -1,6 +1,8 @@
 from distutils.core import setup
 from Cython.Build import cythonize
+import numpy as np
 
 setup(
-    ext_modules = cythonize("knapsacks_cy.pyx")
+    ext_modules=cythonize("cy_knapsacks.pyx"),
+    include_dirs=[np.get_include()]
 )

@@ -63,7 +63,7 @@ def draw_uniform_rankings(m, n, rand=None):
     for i in range(n):
         perm = rand.permutation(m) if rand else np.random.permutation(m)
         res.append(perm)
-    return np.array(res, dtype=int)
+    return np.array(res, dtype=np.int)
 
 
 def remove_candidtate(rankings, cand):
@@ -80,7 +80,7 @@ def rankings_to_initial_sigmas(rankings):
 
     :type rankings: numpy.ndarray
     """
-    initial_sigmas = np.zeros(rankings.shape[1], dtype=int)
+    initial_sigmas = np.zeros(rankings.shape[1], dtype=np.int)
     for i in range(rankings.shape[0]):
         perm = rankings[i]
         for j, perm_j in enumerate(perm):
