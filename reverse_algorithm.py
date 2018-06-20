@@ -26,6 +26,6 @@ def find_strategy(initial_sigmas, alpha, weights):
             ballot[cand] = rank
 
         config_mat[:, ell] = ballot
-        current_awarded += alpha[ballot]
+        current_awarded += weights[ell] * alpha[ballot]
 
     return config_mat

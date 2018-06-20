@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 import sys
-from knapsacks import k_sequnce_knapsack
 # from future import standard_library
 from builtins import *
 
@@ -17,6 +16,15 @@ import utils
 from itertools import chain
 
 logger = logging.getLogger(__name__)
+
+try:
+    from cy_knapsacks import k_sequnce_knapsack
+    logger.info("using Cython knpasacks")
+    print ("using Cython knpasacks")
+except ImportError:
+    logger.info("using vanilla knpasacks")
+    from knapsacks import k_sequnce_knapsack
+
 
 DEBUG_MODE = False
 
@@ -111,8 +119,8 @@ def draw_interim_configs(x_i_C2val):
         try:
             config = np.random.choice(configs, p=weights)
         except:
-            logger.error('weights={}'.format(sum(weights)))
-            raise ValueError('weights')
+            logger.error('weights={} --> {}'.format(weights, sum(weights)))
+            raise
         res.append(config)
     return res
 

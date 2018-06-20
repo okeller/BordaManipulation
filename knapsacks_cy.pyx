@@ -3,8 +3,13 @@ from builtins import *
 
 import numpy as np
 cimport numpy as np
+
+
 import sys
 import logging
+
+DTYPE = np.int
+ctypedef np.int_t DTYPE_t
 
 logger = logging.getLogger(__name__)
 

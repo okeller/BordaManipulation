@@ -14,8 +14,17 @@ from cvxopt.modeling import sum
 import lp_solver
 import utils
 
-from cy_knapsacks import k_multiset_knapsack
 logger = logging.getLogger(__name__)
+
+try:
+    from cy_knapsacks import k_multiset_knapsack
+    logger.info("using Cython knpasacks")
+except ImportError:
+    logger.info("using vanilla knpasacks")
+    from knapsacks import k_multiset_knapsack
+
+
+
 
 
 # def backtrack(taken, weight_bound, multiplicity, weights):
