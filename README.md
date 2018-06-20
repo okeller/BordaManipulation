@@ -2,7 +2,7 @@
 # New Approximations for Coalitional Manipulation in General Scoring Rules
 This repository contains the code for several works, dealing with approximations for the problem of coalitional manipulation under different scoring rules:
 
-* Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximations for Coalitional Manipulation in General Scoring Rules**, manuscript (*).
+* Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximations for Coalitional Manipulation in Scoring Rules**, manuscript (*).
 * Orgad Keller, Avinatan Hassidim, Noam Hazon:  **New Approximation for Borda Coalitional Manipulation**. AAMAS 2017: 606-614 (^). 
 * Other work currently in progress.
 
@@ -17,6 +17,11 @@ This repository contains the code for several works, dealing with approximations
 * mock (for tests)
 * scikit-learn (only for joblib)
 
+### Optional:
+* Cython. In this case run
+```commandline
+python setup.py build_ext --inplace
+```
 ## Running:
 
 For **General-WCM**, using the algorithm in (*), follow this example:
